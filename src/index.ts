@@ -1451,6 +1451,180 @@ const tools = [
     },
   },
 
+  // ── SEARCH ────────────────────────────────────────────────────────────────
+  {
+    name: "find_webapp_by_domain",
+    description: "Search ALL servers for a web app matching a domain name. Returns the server and webapp details. Useful when you know the domain but not which server it's on.",
+    inputSchema: {
+      type: "object",
+      properties: { domain: { type: "string", description: "Domain or partial domain to search for" } },
+      required: ["domain"],
+    },
+  },
+  {
+    name: "webapp_inventory",
+    description: "List every web application across ALL servers in one call. Shows server name, app name, domain, PHP version, stack mode, and SSL status. Great for a full account overview.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+
+  // ── HEALTH & MONITORING ───────────────────────────────────────────────────
+  {
+    name: "server_health_score",
+    description: "Calculate a 0–100 health score for a server based on memory usage, disk usage, load average, and service status. Also returns actionable warnings.",
+    inputSchema: {
+      type: "object",
+      properties: { serverId: { type: "number" } },
+      required: ["serverId"],
+    },
+  },
+  {
+    name: "multi_server_dashboard",
+    description: "Get a dashboard summary of ALL servers: name, IP, online status, health score, webapp count, and disk/memory usage — all in one call.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+  {
+    name: "failed_services_scan",
+    description: "Scan all servers and return only services that are stopped or not running. Useful for quick incident detection across your entire account.",
+    inputSchema: { type: "object", properties: {}, required: [] },
+  },
+
+  // ── SECURITY ──────────────────────────────────────────────────────────────
+  {
+    name: "security_audit",
+    description: "Full security snapshot for a server in one call: firewall rules, SSH public keys, Fail2Ban blocked IPs, and external API keys — all fetched in parallel.",
+    inputSchema: {
+      type: "object",
+      properties: { serverId: { type: "number" } },
+      required: ["serverId"],
+    },
+  },
+  {
+    name: "open_ports_report",
+    description: "List only firewall rules open to ALL IPs (0.0.0.0) on a server. Highlights exposure — useful for security reviews before going live.",
+    inputSchema: {
+      type: "object",
+      properties: { serverId: { type: "number" } },
+      required: ["serverId"],
+    },
+  },
+
+  // ── DEPLOYMENT ────────────────────────────────────────────────────────────
+  {
+    name: "deploy_and_verify",
+    description: "Force a Git deploy and then immediately check the webapp status and tail the last 50 lines of action logs to confirm success. One command for the full deploy cycle.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        webAppId: { type: "number" },
+        gitId: { type: "number" },
+      },
+      required: ["serverId", "webAppId", "gitId"],
+    },
+  },
+
+  // ── WORDPRESS SSH TOOLS ───────────────────────────────────────────────────
+  {
+    name: "wp_health_check",
+    description: "Run a full WordPress health check via SSH: wp-cli info, core checksum verification, active plugin count, and scheduled cron events. Returns a health summary.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+        appPath: { type: "string", description: "Full path to WordPress root, e.g. /home/user/myapp/public" },
+      },
+      required: ["serverId", "username", "password", "appPath"],
+    },
+  },
+  {
+    name: "wp_outdated_plugins",
+    description: "List WordPress plugins that have updates available via SSH + WP-CLI. Shows plugin name, current version, and new version.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+        appPath: { type: "string" },
+      },
+      required: ["serverId", "username", "password", "appPath"],
+    },
+  },
+  {
+    name: "wp_admin_audit",
+    description: "List all WordPress admin users via SSH + WP-CLI. Use to detect unwanted admin accounts — a common indicator of compromise.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+        appPath: { type: "string" },
+      },
+      required: ["serverId", "username", "password", "appPath"],
+    },
+  },
+  {
+    name: "wp_clear_all_caches",
+    description: "Clear all caches on a WordPress site via SSH: WP object cache, OPcache reset, and optionally Redis FLUSHDB. One command to fix stale content issues.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+        appPath: { type: "string" },
+        flushRedis: { type: "boolean", description: "Also flush Redis (default false)" },
+      },
+      required: ["serverId", "username", "password", "appPath"],
+    },
+  },
+
+  // ── PERFORMANCE (SSH) ─────────────────────────────────────────────────────
+  {
+    name: "server_load_report",
+    description: "SSH into a server and return a formatted performance report: uptime + load averages, memory usage (free -h), disk usage (df -h), and top 5 memory-consuming processes.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+      },
+      required: ["serverId", "username", "password"],
+    },
+  },
+  {
+    name: "nginx_top_ips",
+    description: "SSH into a server and return the top 15 IPs by request count from the nginx access log. Useful for detecting traffic spikes, scrapers, or attackers.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+        logPath: { type: "string", description: "Nginx access log path (default: /var/log/nginx/access.log)" },
+      },
+      required: ["serverId", "username", "password"],
+    },
+  },
+  {
+    name: "php_error_summary",
+    description: "SSH into a server and return a summary of PHP errors from a log file: total count, last 20 errors, and grouped error types. Useful for debugging without log access.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        serverId: { type: "number" },
+        username: { type: "string" },
+        password: { type: "string" },
+        logPath: { type: "string", description: "PHP error log path, e.g. /home/user/myapp/logs/php-error.log" },
+      },
+      required: ["serverId", "username", "password", "logPath"],
+    },
+  },
+
   // ── COMPOUND TOOLS ────────────────────────────────────────────────────────
   {
     name: "server_overview",
@@ -1522,7 +1696,7 @@ const tools = [
 // ─── SERVER SETUP ─────────────────────────────────────────────────────────────
 
 const server = new Server(
-  { name: "runcloud-mcp", version: "2.0.0" },
+  { name: "runcloud-mcp", version: "2.1.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -2290,6 +2464,291 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break;
       }
 
+      // ── SEARCH ──────────────────────────────────────────────────────────
+      case "find_webapp_by_domain": {
+        const domain = (a.domain as string).toLowerCase();
+        const serversRes = await runcloudRequest("GET", "/servers?perPage=40") as Record<string, unknown>;
+        const servers = (serversRes.data ?? []) as Record<string, unknown>[];
+        const matches: unknown[] = [];
+        for (const s of servers) {
+          const webappsRes = await runcloudRequest("GET", `/servers/${s.id}/webapps?perPage=40`) as Record<string, unknown>;
+          const webapps = (webappsRes.data ?? []) as Record<string, unknown>[];
+          for (const w of webapps) {
+            const name = String(w.name ?? "").toLowerCase();
+            const domainName = String(w.domainName ?? "").toLowerCase();
+            if (name.includes(domain) || domainName.includes(domain)) {
+              matches.push({ server: { id: s.id, name: s.name, ipAddress: s.ipAddress }, webapp: w });
+            }
+          }
+        }
+        result = { query: a.domain, matches, total: matches.length };
+        break;
+      }
+      case "webapp_inventory": {
+        const serversRes = await runcloudRequest("GET", "/servers?perPage=40") as Record<string, unknown>;
+        const servers = (serversRes.data ?? []) as Record<string, unknown>[];
+        const inventory: unknown[] = [];
+        await Promise.allSettled(servers.map(async (s) => {
+          const wRes = await runcloudRequest("GET", `/servers/${s.id}/webapps?perPage=40`) as Record<string, unknown>;
+          const webapps = (wRes.data ?? []) as Record<string, unknown>[];
+          for (const w of webapps) {
+            inventory.push({
+              server: s.name,
+              serverId: s.id,
+              webapp: w.name,
+              webAppId: w.id,
+              domain: w.domainName,
+              phpVersion: w.phpVersion,
+              stack: w.stack,
+              stackMode: w.stackMode,
+            });
+          }
+        }));
+        result = { totalServers: servers.length, totalWebapps: inventory.length, inventory };
+        break;
+      }
+
+      // ── HEALTH & MONITORING ──────────────────────────────────────────────
+      case "server_health_score": {
+        const sid = a.serverId as number;
+        const [health, hardware, services] = await Promise.allSettled([
+          runcloudRequest("GET", `/servers/${sid}/health/latest`),
+          runcloudRequest("GET", `/servers/${sid}/hardwareinfo`),
+          runcloudRequest("GET", `/servers/${sid}/services`),
+        ]);
+        let score = 100;
+        const warnings: string[] = [];
+        const details: Record<string, unknown> = {};
+
+        if (health.status === "fulfilled") {
+          const h = health.value as Record<string, unknown>;
+          const mem = Number(h.memoryUsagePercent ?? 0);
+          const disk = Number(h.diskUsagePercent ?? 0);
+          const load = Number(h.loadAverage ?? 0);
+          details.memory = `${mem}%`;
+          details.disk = `${disk}%`;
+          details.loadAverage = load;
+          if (mem > 90) { score -= 30; warnings.push(`Critical memory usage: ${mem}%`); }
+          else if (mem > 75) { score -= 15; warnings.push(`High memory usage: ${mem}%`); }
+          if (disk > 90) { score -= 30; warnings.push(`Critical disk usage: ${disk}%`); }
+          else if (disk > 75) { score -= 15; warnings.push(`High disk usage: ${disk}%`); }
+          if (load > 4) { score -= 20; warnings.push(`High load average: ${load}`); }
+          else if (load > 2) { score -= 10; warnings.push(`Elevated load average: ${load}`); }
+        }
+        if (services.status === "fulfilled") {
+          const svcs = (services.value as Record<string, unknown>).data as Record<string, unknown>[];
+          if (Array.isArray(svcs)) {
+            const stopped = svcs.filter((s) => s.status === "stopped" || s.isRunning === false);
+            if (stopped.length > 0) {
+              score -= stopped.length * 10;
+              warnings.push(`${stopped.length} service(s) not running: ${stopped.map((s) => s.realName).join(", ")}`);
+            }
+          }
+        }
+        score = Math.max(0, score);
+        const grade = score >= 90 ? "A" : score >= 75 ? "B" : score >= 60 ? "C" : score >= 40 ? "D" : "F";
+        result = { score, grade, status: score >= 75 ? "healthy" : score >= 50 ? "degraded" : "critical", warnings, details };
+        break;
+      }
+      case "multi_server_dashboard": {
+        const serversRes = await runcloudRequest("GET", "/servers?perPage=40") as Record<string, unknown>;
+        const servers = (serversRes.data ?? []) as Record<string, unknown>[];
+        const rows = await Promise.allSettled(servers.map(async (s) => {
+          const [health, stats] = await Promise.allSettled([
+            runcloudRequest("GET", `/servers/${s.id}/health/latest`),
+            runcloudRequest("GET", `/servers/${s.id}/stats`),
+          ]);
+          const h = health.status === "fulfilled" ? health.value as Record<string, unknown> : {};
+          const st = stats.status === "fulfilled" ? stats.value as Record<string, unknown> : {};
+          return {
+            id: s.id, name: s.name, ip: s.ipAddress, online: s.online, connected: s.connected,
+            memory: h.memoryUsagePercent ? `${h.memoryUsagePercent}%` : "n/a",
+            disk: h.diskUsagePercent ? `${h.diskUsagePercent}%` : "n/a",
+            load: h.loadAverage ?? "n/a",
+            webapps: st.webAppCount ?? "n/a",
+            databases: st.databaseCount ?? "n/a",
+          };
+        }));
+        result = rows.map((r) => r.status === "fulfilled" ? r.value : { error: (r as PromiseRejectedResult).reason?.message });
+        break;
+      }
+      case "failed_services_scan": {
+        const serversRes = await runcloudRequest("GET", "/servers?perPage=40") as Record<string, unknown>;
+        const servers = (serversRes.data ?? []) as Record<string, unknown>[];
+        const issues: unknown[] = [];
+        await Promise.allSettled(servers.map(async (s) => {
+          try {
+            const svcs = await runcloudRequest("GET", `/servers/${s.id}/services`) as Record<string, unknown>;
+            const list = (svcs.data ?? []) as Record<string, unknown>[];
+            for (const svc of list) {
+              if (svc.status === "stopped" || svc.isRunning === false) {
+                issues.push({ server: s.name, serverId: s.id, service: svc.realName, status: svc.status });
+              }
+            }
+          } catch { /* skip offline servers */ }
+        }));
+        result = { totalIssues: issues.length, issues: issues.length === 0 ? "All services running across all servers" : issues };
+        break;
+      }
+
+      // ── SECURITY ────────────────────────────────────────────────────────
+      case "security_audit": {
+        const sid = a.serverId as number;
+        const [firewall, sshKeys, fail2ban, externalApis] = await Promise.allSettled([
+          runcloudRequest("GET", `/servers/${sid}/security/firewalls?perPage=40`),
+          runcloudRequest("GET", `/servers/${sid}/sshcredentials?perPage=40`),
+          runcloudRequest("GET", `/servers/${sid}/security/fail2ban/blockedip`),
+          runcloudRequest("GET", `/settings/externalapi?perPage=40`),
+        ]);
+        result = {
+          firewallRules: firewall.status === "fulfilled" ? firewall.value : { error: (firewall as PromiseRejectedResult).reason?.message },
+          sshKeys: sshKeys.status === "fulfilled" ? sshKeys.value : { error: (sshKeys as PromiseRejectedResult).reason?.message },
+          fail2banBlockedIPs: fail2ban.status === "fulfilled" ? fail2ban.value : { error: (fail2ban as PromiseRejectedResult).reason?.message },
+          externalApis: externalApis.status === "fulfilled" ? externalApis.value : { error: (externalApis as PromiseRejectedResult).reason?.message },
+        };
+        break;
+      }
+      case "open_ports_report": {
+        const sid = a.serverId as number;
+        const res = await runcloudRequest("GET", `/servers/${sid}/security/firewalls?perPage=40`) as Record<string, unknown>;
+        const rules = (res.data ?? []) as Record<string, unknown>[];
+        const open = rules.filter((r) => !r.ipAddress || r.ipAddress === "0.0.0.0" || r.ipAddress === "::");
+        result = {
+          server: sid,
+          totalRules: rules.length,
+          openToAll: open.length,
+          rules: open.map((r) => ({ port: r.port, protocol: r.protocol, type: r.type, action: r.firewallAction })),
+          note: open.length === 0 ? "No globally open ports found" : `${open.length} port(s) open to all IPs — review if intentional`,
+        };
+        break;
+      }
+
+      // ── DEPLOYMENT ──────────────────────────────────────────────────────
+      case "deploy_and_verify": {
+        const sid = a.serverId as number;
+        const wid = a.webAppId as number;
+        const gid = a.gitId as number;
+        // Force deploy
+        const deploy = await runcloudRequest("PUT", `/servers/${sid}/webapps/${wid}/git/${gid}/script`);
+        // Get webapp state + logs in parallel
+        const [webapp, logs] = await Promise.allSettled([
+          runcloudRequest("GET", `/servers/${sid}/webapps/${wid}`),
+          runcloudRequest("GET", `/servers/${sid}/webapps/${wid}/log?perPage=50`),
+        ]);
+        result = {
+          deployTriggered: true,
+          deployResponse: deploy,
+          webappStatus: webapp.status === "fulfilled" ? webapp.value : { error: (webapp as PromiseRejectedResult).reason?.message },
+          recentLogs: logs.status === "fulfilled" ? logs.value : { error: (logs as PromiseRejectedResult).reason?.message },
+        };
+        break;
+      }
+
+      // ── WORDPRESS SSH ────────────────────────────────────────────────────
+      case "wp_health_check": {
+        const ip = await getServerIP(a.serverId as number);
+        const u = a.username as string;
+        const p = a.password as string;
+        const path = a.appPath as string;
+        const [info, checksums, plugins, cron] = await Promise.allSettled([
+          sshExec(ip, u, p, `wp --info --allow-root 2>&1 | head -20`, 20000),
+          sshExec(ip, u, p, `cd ${path} && wp core verify-checksums --allow-root 2>&1`, 30000),
+          sshExec(ip, u, p, `cd ${path} && wp plugin list --status=active --format=count --allow-root 2>&1`, 15000),
+          sshExec(ip, u, p, `cd ${path} && wp cron event list --format=count --allow-root 2>&1`, 15000),
+        ]);
+        result = {
+          host: ip,
+          appPath: path,
+          wpCLIInfo: info.status === "fulfilled" ? info.value.stdout : "unavailable",
+          coreChecksums: checksums.status === "fulfilled" ? checksums.value.stdout : "unavailable",
+          activePluginCount: plugins.status === "fulfilled" ? plugins.value.stdout : "unavailable",
+          scheduledCronEvents: cron.status === "fulfilled" ? cron.value.stdout : "unavailable",
+        };
+        break;
+      }
+      case "wp_outdated_plugins": {
+        const ip = await getServerIP(a.serverId as number);
+        const cmd = `cd ${a.appPath} && wp plugin list --update=available --fields=name,version,update_version --format=table --allow-root 2>&1`;
+        const out = await sshExec(ip, a.username as string, a.password as string, cmd, 60000);
+        result = { host: ip, appPath: a.appPath, output: out.stdout || out.stderr, exitCode: out.code };
+        break;
+      }
+      case "wp_admin_audit": {
+        const ip = await getServerIP(a.serverId as number);
+        const cmd = `cd ${a.appPath} && wp user list --role=administrator --fields=ID,user_login,user_email,user_registered --format=table --allow-root 2>&1`;
+        const out = await sshExec(ip, a.username as string, a.password as string, cmd, 30000);
+        result = { host: ip, appPath: a.appPath, adminUsers: out.stdout || out.stderr, exitCode: out.code };
+        break;
+      }
+      case "wp_clear_all_caches": {
+        const ip = await getServerIP(a.serverId as number);
+        const u = a.username as string;
+        const p = a.password as string;
+        const path = a.appPath as string;
+        const flushRedis = a.flushRedis === true;
+        const cmds = [
+          `cd ${path} && wp cache flush --allow-root 2>&1`,
+          `php -r "if(function_exists('opcache_reset')){opcache_reset();echo 'OPcache cleared';}else{echo 'OPcache not available';}" 2>&1`,
+        ];
+        if (flushRedis) cmds.push(`redis-cli FLUSHDB 2>&1`);
+        const results = await Promise.allSettled(cmds.map((cmd) => sshExec(ip, u, p, cmd, 30000)));
+        result = {
+          host: ip,
+          wpCacheFlush: results[0].status === "fulfilled" ? (results[0].value as {stdout: string}).stdout : "failed",
+          opCacheReset: results[1].status === "fulfilled" ? (results[1].value as {stdout: string}).stdout : "failed",
+          redisFlush: flushRedis ? (results[2]?.status === "fulfilled" ? (results[2].value as {stdout: string}).stdout : "failed") : "skipped",
+        };
+        break;
+      }
+
+      // ── PERFORMANCE (SSH) ────────────────────────────────────────────────
+      case "server_load_report": {
+        const ip = await getServerIP(a.serverId as number);
+        const u = a.username as string;
+        const p = a.password as string;
+        const [uptime, memory, disk, processes] = await Promise.allSettled([
+          sshExec(ip, u, p, "uptime", 10000),
+          sshExec(ip, u, p, "free -h", 10000),
+          sshExec(ip, u, p, "df -h --output=source,size,used,avail,pcent,target | head -20", 10000),
+          sshExec(ip, u, p, "ps aux --sort=-%mem | head -6 | awk '{print $1,$2,$3,$4,$11}'", 10000),
+        ]);
+        result = {
+          host: ip,
+          uptime: uptime.status === "fulfilled" ? uptime.value.stdout : "unavailable",
+          memory: memory.status === "fulfilled" ? memory.value.stdout : "unavailable",
+          disk: disk.status === "fulfilled" ? disk.value.stdout : "unavailable",
+          topProcessesByMemory: processes.status === "fulfilled" ? processes.value.stdout : "unavailable",
+        };
+        break;
+      }
+      case "nginx_top_ips": {
+        const ip = await getServerIP(a.serverId as number);
+        const logPath = (a.logPath as string) ?? "/var/log/nginx/access.log";
+        const cmd = `awk '{print $1}' ${logPath} | sort | uniq -c | sort -rn | head -15 2>&1`;
+        const out = await sshExec(ip, a.username as string, a.password as string, cmd, 20000);
+        result = { host: ip, logPath, topIPs: out.stdout || out.stderr, exitCode: out.code };
+        break;
+      }
+      case "php_error_summary": {
+        const ip = await getServerIP(a.serverId as number);
+        const logPath = a.logPath as string;
+        const u = a.username as string;
+        const p = a.password as string;
+        const [total, last20, grouped] = await Promise.allSettled([
+          sshExec(ip, u, p, `wc -l < ${logPath} 2>&1`, 10000),
+          sshExec(ip, u, p, `tail -20 ${logPath} 2>&1`, 10000),
+          sshExec(ip, u, p, `grep -oP '(?<=PHP )(Fatal error|Warning|Notice|Parse error|Deprecated)' ${logPath} | sort | uniq -c | sort -rn 2>&1`, 15000),
+        ]);
+        result = {
+          host: ip,
+          logPath,
+          totalLines: total.status === "fulfilled" ? total.value.stdout : "unavailable",
+          errorTypeCounts: grouped.status === "fulfilled" ? grouped.value.stdout : "unavailable",
+          last20Lines: last20.status === "fulfilled" ? last20.value.stdout : "unavailable",
+        };
+        break;
+      }
+
       default:
         throw new Error(`Unknown tool: ${name}`);
     }
@@ -2311,7 +2770,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("RunCloud MCP Server v2.0 running on stdio");
+  console.error("RunCloud MCP Server v2.1 running on stdio");
 }
 
 main().catch((err) => {
