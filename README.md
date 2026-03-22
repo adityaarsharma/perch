@@ -337,4 +337,18 @@ MIT — use it, modify it, build on it.
 
 ---
 
+## 👨‍💻 About
+
+Built by **[Aditya Sharma](https://adityaarsharma.com)**
+
+I build tools at the intersection of AI,WordPress and marketing. Follow along:
+
+- 🌐 **Website:** [adityaarsharma.com](https://adityaarsharma.com)
+- 🐦 **Twitter/X:** [@adityaarsharma](https://twitter.com/adityaarsharma)
+- 💻 **GitHub:** [@adityaarsharma](https://github.com/adityaarsharma/)
+
+If this saved you time → **star the repo ⭐** and share it with a creator friend!
+
+---
+
 *Not an official RunCloud product. Built independently using the [RunCloud public API](https://runcloud.io/docs/api/v3).*
