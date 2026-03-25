@@ -1,8 +1,10 @@
-# RunCloud Server Management MCP — Manage, Monitor & Fix Servers from Claude
+# RunCloud Server Management MCP
 
-Manage your RunCloud servers, monitor server health in real time, and auto-fix issues — all through a single AI conversation. No dashboard switching. No terminal commands. Just tell Claude what you need.
+### The Complete Server Management Automation Kit
 
-**135 tools. Three powerful modes. One MCP server.**
+RunCloud API + Real-Time Monitoring + Self-Healing + Telegram Alerts. 135 tools packed into one MCP server. Manage servers, detect problems, fix them automatically, and get alerts on your phone.
+
+**Control Plane. Observability. Automation. Alerts. All in one.**
 
 [![RunCloud](https://img.shields.io/badge/RunCloud-API%20v3-0066CC?style=flat-square)](https://runcloud.io)
 [![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-Compatible-blueviolet?style=flat-square)](https://modelcontextprotocol.io)
@@ -15,27 +17,75 @@ Manage your RunCloud servers, monitor server health in real time, and auto-fix i
 
 ## Why This Exists
 
-[RunCloud](https://runcloud.io) is a server management panel for deploying web apps on any cloud — DigitalOcean, Hetzner, AWS, Vultr, Linode, or bare metal. It has a powerful REST API, but using it means reading docs, writing curl commands, and switching between tabs.
+[RunCloud](https://runcloud.io) is a server management panel for deploying web apps on any cloud - DigitalOcean, Hetzner, AWS, Vultr, Linode, or bare metal. It has a powerful REST API, but using it means reading docs, writing curl commands, and switching between tabs.
 
-This MCP server connects RunCloud's full API — plus live SSH access and a Telegram monitoring bot — directly into Claude. You describe what you want in plain English. Claude handles the API calls, SSH commands, and server fixes automatically.
+This MCP server brings three things together into one automation kit:
+
+1. **RunCloud API** - full server management (web apps, databases, SSL, firewall, deployments, cron jobs)
+2. **SSH Monitoring + Self-Healing** - real-time health checks that detect and fix problems automatically
+3. **Telegram Bot** - 24/7 alerts on your phone with one-tap fix buttons
+
+Works with Claude Desktop and Claude Code. You describe what you want in plain English. The AI handles the API calls, SSH commands, and server fixes.
 
 **Example:**
 
 > *"Set up a WordPress site on my production server with PHP 8.2, create the database, system user, and install SSL."*
 
-Claude executes 6 API calls in the right order, with the right parameters. Done.
+Six API calls executed in the right order, with the right parameters. Done.
 
 ---
 
-## Three Modes — Pick What You Need
+## The Kit - Three Layers
 
-| Mode | What It Does | Requires |
-|------|-------------|----------|
-| **RunCloud API** | Full server management — web apps, databases, SSL, domains, firewall, deployments, cron jobs, and more. 128 tools. | RunCloud API key |
-| **SSH Monitoring & Self-Healing** | Real-time health checks, auto-fix broken services, kill orphan processes, clean disk space. 7 tools. | SSH access only (any Linux server) |
-| **Telegram Bot** | Automated alerts every 10 minutes, inline fix buttons, 15+ commands for remote control from your phone. | Telegram bot token |
+| Layer | What It Does | Requires |
+|-------|-------------|----------|
+| **RunCloud API** (Control Plane) | Full server management - web apps, databases, SSL, domains, firewall, deployments, cron jobs, and more. 128 tools. | RunCloud API key |
+| **SSH Monitoring + Self-Healing** (Observability) | Real-time health checks, auto-fix broken services, kill orphan processes, clean disk space. 7 tools. | SSH access only (any Linux server) |
+| **Telegram Bot** (Alert Layer) | Automated alerts every 10 minutes, inline fix buttons, 15+ commands for remote server control from your phone. | Telegram bot token |
 
-**All three work independently.** Use just one, or combine all three. No RunCloud account needed for SSH monitoring. No SSH needed for RunCloud API tools.
+**All three layers work independently.** Use just one, or combine all three. No RunCloud account needed for SSH monitoring. No SSH needed for RunCloud API tools.
+
+---
+
+## Security
+
+Server management tools demand strict security. Here is how every layer is locked down.
+
+### Zero Third-Party Relay
+
+- **All API traffic** goes direct HTTPS to `manage.runcloud.io` - no proxy, no relay, no middleware
+- **All SSH traffic** goes direct to your server - no tunnel service, no intermediary
+- **Telegram bot** communicates directly with the Telegram Bot API from your server
+
+### Credential Protection
+
+- **RunCloud API key** stored only in your local MCP config file - never transmitted anywhere except direct to RunCloud
+- **SSH credentials** passed per-call only - never stored, never cached, never written to disk by this MCP
+- **Telegram bot token** stored in `.env` on your server with `chmod 600` permissions
+
+### Input Validation & Injection Prevention
+
+- **Shell injection protection** - all SSH inputs sanitized through `shellEscape`, `validatePath`, and `validateServiceName` before execution
+- **Numeric parameter validation** - timeouts, line counts, and port numbers are bounded to safe ranges
+- **SSH output truncated at 1MB** - prevents memory exhaustion from runaway command output
+
+### Error Sanitization
+
+- **Bearer tokens auto-redacted** from all error messages
+- **Passwords auto-redacted** from all error output
+- Error responses never leak credentials, even on unexpected failures
+
+### Network Isolation
+
+- **Fix server** (`fix-server.py`) binds to `127.0.0.1:3011` only - not accessible from outside the server
+- **MCP processes** bind to `127.0.0.1` behind nginx with Bearer token authentication when deployed remotely
+- **Telegram bot** validates every incoming message against your `TELEGRAM_CHAT_ID` - ignores all other users
+
+### Access Control
+
+- `.env` files set to `chmod 600` (owner read/write only)
+- Failed authentication attempts are logged
+- RunCloud API key scope is full read/write - protect the machine where the MCP is configured
 
 ---
 
@@ -43,25 +93,25 @@ Claude executes 6 API calls in the right order, with the right parameters. Done.
 
 ### For Non-Technical Users
 
-- **Ask about your servers in plain English** — "How's my server doing?" "Is anything broken?" "Which sites need SSL renewal?"
-- **Fix problems without touching a terminal** — Claude detects issues and repairs them automatically
-- **Get Telegram alerts on your phone** — Know when something goes wrong, tap a button to fix it
-- **Set up WordPress sites in one sentence** — Domain, database, user, SSL — all created automatically
-- **Monitor all servers from one place** — Health scores, disk usage, memory — across every server you own
+- **Ask about your servers in plain English** -"How's my server doing?" "Is anything broken?" "Which sites need SSL renewal?"
+- **Fix problems without touching a terminal** - issues are detected and repaired automatically
+- **Get Telegram alerts on your phone** - know when something goes wrong, tap a button to fix it
+- **Set up WordPress sites in one sentence** - domain, database, user, SSL - all created automatically
+- **Monitor all servers from one place** - health scores, disk usage, memory - across every server you own
 
 ### For Developers & DevOps
 
-- **135 tools covering the entire RunCloud API** — Everything the dashboard can do, Claude can do programmatically
-- **SSH execution built in** — Run any command on any server directly from Claude
-- **Compound operations** — WordPress quickstart (6 API calls), multi-server dashboard, cross-server domain search
-- **Self-healing automation** — Detects nginx down, high memory, orphan processes, full disks — and fixes them
-- **Works with Claude Desktop and Claude Code** — GUI or terminal, your choice
+- **135 tools covering the entire RunCloud API** - everything the dashboard can do, available programmatically
+- **SSH execution built in** - run any command on any server directly
+- **Compound operations** - WordPress quickstart (6 API calls), multi-server dashboard, cross-server domain search
+- **Self-healing automation** - detects nginx down, high memory, orphan processes, full disks - and fixes them
+- **Works with Claude Desktop and Claude Code** - GUI or terminal, your choice
 
 ---
 
-## RunCloud MCP — Full Server Management (128 Tools)
+## RunCloud API - Full Server Management (128 Tools)
 
-Everything the RunCloud dashboard can do, Claude can do — faster, in bulk, across all servers at once.
+Everything the RunCloud dashboard can do - faster, in bulk, across all servers at once.
 
 ### Not Just an API Wrapper
 
@@ -69,18 +119,18 @@ Most integrations wrap the API 1:1. This goes further with **compound tools** th
 
 | Tool | What Happens Behind The Scenes |
 |------|-------------------------------|
-| `wordpress_quickstart` | Creates system user → database → DB user → grants access → creates web app → installs WordPress. **Six API calls. One prompt.** |
-| `server_overview` | Server info + health + hardware + services + web apps — fetched simultaneously |
+| `wordpress_quickstart` | Creates system user, database, DB user, grants access, creates web app, installs WordPress. **Six API calls. One prompt.** |
+| `server_overview` | Server info + health + hardware + services + web apps - fetched simultaneously |
 | `all_servers_health` | Health check across **every server** in your account at once |
-| `multi_server_dashboard` | Every server: name, IP, health score, webapp count, memory %, disk % — one view |
-| `webapp_inventory` | Every webapp across every server — domain, PHP, stack mode — one table |
+| `multi_server_dashboard` | Every server: name, IP, health score, webapp count, memory %, disk % - one view |
+| `webapp_inventory` | Every webapp across every server - domain, PHP, stack mode - one table |
 | `ssl_expiry_check` | Scans all web apps on a server, flags expired and expiring-soon certs |
-| `find_webapp_by_domain` | Searches **all servers** for a domain — returns which server it's on |
-| `failed_services_scan` | Scans all servers, returns only stopped/failed services — instant incident detection |
-| `deploy_and_verify` | Force deploy + check webapp status + tail logs — full deploy cycle in one step |
-| `server_health_score` | Calculates a 0–100 score with letter grade (A–F) based on memory, disk, load, services |
+| `find_webapp_by_domain` | Searches **all servers** for a domain - returns which server it's on |
+| `failed_services_scan` | Scans all servers, returns only stopped/failed services - instant incident detection |
+| `deploy_and_verify` | Force deploy + check webapp status + tail logs - full deploy cycle in one step |
+| `server_health_score` | Calculates a 0-100 score with letter grade (A-F) based on memory, disk, load, services |
 
-### Example Prompts — RunCloud API
+### Example Prompts - RunCloud API
 
 ```
 "Give me a full dashboard of all my servers"
@@ -98,7 +148,7 @@ Most integrations wrap the API 1:1. This goes further with **compound tools** th
 
 ## Server Monitoring & Self-Healing (7 SSH Tools)
 
-These work on **any Linux server** — RunCloud-managed or not. No API key needed. Just SSH access.
+These work on **any Linux server** - RunCloud-managed or not. No API key needed. Just SSH access.
 
 ### What It Monitors
 
@@ -107,7 +157,7 @@ These work on **any Linux server** — RunCloud-managed or not. No API key neede
 | `ssh_server_status` | Full health report: RAM, disk, CPU load, nginx status, orphan process count, top 5 processes by memory |
 | `ssh_smart_fix` | Detects and auto-fixes: nginx down, orphan processes, high memory, full disk. Reports exactly what was fixed. |
 | `ssh_restart_service` | Restart any service via SSH. Auto-detects `nginx-rc` (RunCloud) vs `nginx`. Handles `n8n`, `pm2`, any systemd service. |
-| `ssh_kill_orphans` | Finds processes with PPID=1 (true orphans). Dry-run by default. Filter by process name. Safe — skips system processes. |
+| `ssh_kill_orphans` | Finds processes with PPID=1 (true orphans). Dry-run by default. Filter by process name. Safe - skips system processes. |
 | `ssh_disk_cleanup` | Lists large log files. Dry-run by default. Pass `dryRun: false` to clear. Configurable minimum size. |
 | `ssh_check_ports` | All listening ports with PID and process name. Optional filter to specific ports. |
 | `telegram_send_alert` | Send a Markdown message to any Telegram chat. Optionally include action buttons (Status, Smart Fix, Nginx, Disk, Ignore). |
@@ -120,8 +170,8 @@ Problem detected               →  Action taken
 nginx-rc / nginx is not active →  sudo systemctl restart nginx-rc (or nginx)
 Orphan procs (PPID=1) > 10    →  Kill all orphan PIDs
 Memory usage > 88%             →  pm2 restart all (finds pm2 automatically)
-Disk usage > 88%               →  truncate -s 0 on log files > 50MB
-All clear                      →  Reports "healthy — nothing needed fixing"
+Disk usage > 88%               →  truncate - s 0 on log files > 50MB
+All clear                      →  Reports "healthy - nothing needed fixing"
 ```
 
 ### RunCloud-Specific: nginx-rc Detection
@@ -137,22 +187,22 @@ systemctl is-active nginx-rc   →  inactive →  fall back to nginx
 
 You can also pass `nginxService: "nginx-rc"` explicitly to skip detection.
 
-### Example Prompts — Monitoring
+### Example Prompts - Monitoring
 
 ```
 "Check the status of my server at 95.216.156.89"
-"Run a smart fix on my server — detect and repair any issues"
+"Run a smart fix on my server - detect and repair any issues"
 "Kill orphan processes on my server (dry run first)"
-"Restart nginx on my server — it uses RunCloud so try nginx-rc first"
+"Restart nginx on my server - it uses RunCloud so try nginx-rc first"
 "Show me all listening ports on my server"
 "Find log files over 100MB and clear them"
 ```
 
 ---
 
-## Telegram Bot — Monitor & Fix from Your Phone
+## Telegram Bot - Monitor & Fix from Your Phone
 
-A complete standalone monitoring and alerting stack. Runs on your server with zero external dependencies beyond Python.
+A complete standalone monitoring and alerting layer. Runs on your server with zero external dependencies beyond Python.
 
 ### How It Works
 
@@ -161,10 +211,10 @@ Your Server
 ├── monitor.sh        ← Cron every 10 min → detects issues → sends Telegram alerts
 ├── fix-server.py     ← Local HTTP API on 127.0.0.1:3011 → executes fix scripts
 ├── bot.py            ← Telegram bot (polling) → handles commands + button callbacks
-└── .env              ← All config in one file
+└── .env              ← All config in one file (chmod 600)
 ```
 
-**monitor.sh** runs every 10 minutes via cron. If it detects a problem (nginx down, high memory, disk full), it sends a Telegram message with inline action buttons. Tap a button → the fix runs instantly → you see the result in chat.
+**monitor.sh** runs every 10 minutes via cron. If it detects a problem (nginx down, high memory, disk full), it sends a Telegram message with inline action buttons. Tap a button, the fix runs instantly, you see the result in chat.
 
 ### Telegram Commands
 
@@ -172,7 +222,7 @@ Your Server
 |---------|-------------|
 | `/status` | Full RAM, Disk, CPU, nginx, services status |
 | `/brief` | One-liner quick status |
-| `/fix` | Smart fix — auto-detect and repair all issues |
+| `/fix` | Smart fix - auto-detect and repair all issues |
 | `/nginx` | Restart nginx / nginx-rc |
 | `/n8n` | Restart n8n |
 | `/services` | Restart all custom services |
@@ -192,11 +242,11 @@ Your Server
 When monitor.sh detects a problem, the Telegram message includes inline buttons:
 
 ```
-🔧 Smart Fix    📊 Status
-🌐 Nginx        💾 Disk    ✅ Ignore
+Smart Fix    Status
+Nginx        Disk    Ignore
 ```
 
-Tap a button → fix runs → result appears in the same chat. Works even when the Telegram bot service is stopped — the fix server handles callbacks independently.
+Tap a button, the fix runs, the result appears in the same chat. Works even when the Telegram bot service is stopped - the fix server handles callbacks independently.
 
 ### Telegram Setup
 
@@ -216,8 +266,8 @@ bash setup.sh
 6. Sends a test Telegram message to confirm it works
 
 **To get Telegram credentials:**
-- **Bot token:** Message [@BotFather](https://t.me/BotFather) → `/newbot` → copy the token
-- **Chat ID:** Message [@userinfobot](https://t.me/userinfobot) → it replies with your chat ID
+- **Bot token:** Message [@BotFather](https://t.me/BotFather) on Telegram, run `/newbot`, copy the token
+- **Chat ID:** Message [@userinfobot](https://t.me/userinfobot) on Telegram, it replies with your chat ID
 
 ---
 
@@ -264,10 +314,10 @@ The MCP server starts automatically. You'll see a hammer icon in Claude Desktop 
 
 ```bash
 claude mcp add runcloud node /absolute/path/to/dist/index.js \
-  -e RUNCLOUD_API_KEY=your_runcloud_api_key_here
+  - e RUNCLOUD_API_KEY=your_runcloud_api_key_here
 ```
 
-Or without API key (SSH tools only):
+Or without API key (SSH monitoring tools only):
 
 ```bash
 claude mcp add runcloud node /absolute/path/to/dist/index.js
@@ -276,7 +326,7 @@ claude mcp add runcloud node /absolute/path/to/dist/index.js
 **5. Via supergateway (for remote/shared access)**
 
 ```bash
-npm install -g supergateway
+npm install - g supergateway
 supergateway --stdio "node /path/to/dist/index.js" \
   --port 3020 \
   --outputTransport streamableHttp \
@@ -304,18 +354,18 @@ Then in Claude Desktop config:
 ### Getting Your RunCloud API Key
 
 1. Log into [RunCloud](https://runcloud.io)
-2. Go to **Settings → API Management**
+2. Go to **Settings, then API Management**
 3. Create a new API key
-4. Copy the key — you won't see it again
+4. Copy the key - you won't see it again
 
-The API key gives full read/write access to everything in your RunCloud account. Store it only in your local Claude config file — never commit it to Git.
+The API key gives full read/write access to everything in your RunCloud account. Store it only in your local config file - never commit it to Git.
 
 ---
 
 ## Full Tool Catalog (135 Tools)
 
 <details>
-<summary><strong>Servers — 17 tools</strong></summary>
+<summary><strong>Servers -17 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -340,7 +390,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Web Applications — 12 tools</strong></summary>
+<summary><strong>Web Applications -12 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -360,7 +410,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>PHP Script Installer — 3 tools</strong></summary>
+<summary><strong>PHP Script Installer -3 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -371,7 +421,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Git & Deployments — 6 tools</strong></summary>
+<summary><strong>Git & Deployments -6 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -386,7 +436,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Domains — 3 tools</strong></summary>
+<summary><strong>Domains -3 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -397,7 +447,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>SSL Certificates — 10 tools</strong></summary>
+<summary><strong>SSL Certificates -10 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -415,7 +465,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Databases — 12 tools</strong></summary>
+<summary><strong>Databases -12 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -436,7 +486,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>System Users — 6 tools</strong></summary>
+<summary><strong>System Users -6 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -450,7 +500,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>SSH Keys — 4 tools</strong></summary>
+<summary><strong>SSH Keys -4 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -462,7 +512,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Cron Jobs — 5 tools</strong></summary>
+<summary><strong>Cron Jobs -5 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -475,7 +525,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Supervisor — 8 tools</strong></summary>
+<summary><strong>Supervisor -8 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -491,7 +541,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Firewall & Security — 9 tools</strong></summary>
+<summary><strong>Firewall & Security -9 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -502,13 +552,13 @@ The API key gives full read/write access to everything in your RunCloud account.
 | `list_fail2ban_blocked_ips` | IPs currently blocked by Fail2Ban |
 | `unblock_fail2ban_ip` | Unblock a specific IP from Fail2Ban |
 | `security_audit` | Full snapshot: firewall + SSH keys + Fail2Ban + external APIs |
-| `open_ports_report` | Ports open to 0.0.0.0 — review before going live |
+| `open_ports_report` | Ports open to 0.0.0.0 - review before going live |
 | `list_ssl_protocols` | Available SSL/TLS protocol versions |
 
 </details>
 
 <details>
-<summary><strong>Services — 2 tools</strong></summary>
+<summary><strong>Services -2 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -518,7 +568,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>External APIs — 5 tools</strong></summary>
+<summary><strong>External APIs -5 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -531,57 +581,57 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Cross-Server Search & Inventory — 4 tools</strong></summary>
+<summary><strong>Cross-Server Search & Inventory -4 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `find_webapp_by_domain` | Search all servers for a domain name — returns server + webapp |
+| `find_webapp_by_domain` | Search all servers for a domain name - returns server + webapp |
 | `webapp_inventory` | Full inventory: every webapp across all servers in one table |
 | `multi_server_dashboard` | All servers: health score, webapp count, memory%, disk% |
-| `failed_services_scan` | All servers: only stopped/failed services — instant incident detection |
+| `failed_services_scan` | All servers: only stopped/failed services - instant incident detection |
 
 </details>
 
 <details>
-<summary><strong>Health, Monitoring & Performance — 7 tools</strong></summary>
+<summary><strong>Health, Monitoring & Performance -7 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
 | `server_overview` | Full server snapshot: info + health + hardware + services + webapps |
-| `server_health_score` | 0–100 score + letter grade (A–F) based on RAM, disk, load, services |
+| `server_health_score` | 0-100 score + letter grade (A-F) based on RAM, disk, load, services |
 | `all_servers_health` | Health status across every server in your account |
 | `server_load_report` | CPU, memory, disk, and load trends via SSH |
-| `nginx_top_ips` | Top IPs hitting nginx — detect scrapers and attackers |
+| `nginx_top_ips` | Top IPs hitting nginx - detect scrapers and attackers |
 | `php_error_summary` | PHP error counts by type + last 20 lines from error log |
 | `ssl_expiry_check` | Scans all web apps, flags EXPIRED and EXPIRING_SOON certs |
 
 </details>
 
 <details>
-<summary><strong>Deployments — 2 tools</strong></summary>
+<summary><strong>Deployments -2 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
-| `deploy_and_verify` | Force deploy + check webapp status + tail logs — one step |
-| `wordpress_quickstart` | Full WordPress setup: user + DB + web app + install — one prompt |
+| `deploy_and_verify` | Force deploy + check webapp status + tail logs - one step |
+| `wordpress_quickstart` | Full WordPress setup: user + DB + web app + install - one prompt |
 
 </details>
 
 <details>
-<summary><strong>WordPress Management (SSH) — 5 tools</strong></summary>
+<summary><strong>WordPress Management (SSH) -5 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
 | `ssh_wp_cli` | Run any WP-CLI command on any web app |
 | `wp_health_check` | WP core checksums + active plugins + cron status |
 | `wp_outdated_plugins` | List plugins with available updates |
-| `wp_admin_audit` | All admin users — detect unexpected accounts |
+| `wp_admin_audit` | All admin users - detect unexpected accounts |
 | `wp_clear_all_caches` | Flush WordPress + Redis + OPcache |
 
 </details>
 
 <details>
-<summary><strong>SSH Direct Execution — 4 tools</strong></summary>
+<summary><strong>SSH Direct Execution -4 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -593,7 +643,7 @@ The API key gives full read/write access to everything in your RunCloud account.
 </details>
 
 <details>
-<summary><strong>Server Monitoring & Self-Healing (SSH-direct) — 7 tools</strong></summary>
+<summary><strong>Server Monitoring & Self-Healing (SSH-direct) -7 tools</strong></summary>
 
 | Tool | Description |
 |------|-------------|
@@ -609,15 +659,15 @@ The API key gives full read/write access to everything in your RunCloud account.
 
 ---
 
-## SSH Tools — How Server Connections Work
+## SSH Tools - How Server Connections Work
 
-**With RunCloud API:** Pass a `serverId` — the server IP is fetched automatically from RunCloud. You never need to look it up.
+**With RunCloud API:** Pass a `serverId` - the server IP is fetched automatically from RunCloud. You never need to look it up.
 
 **Without RunCloud API:** Pass `host` directly to any SSH monitoring tool. No API key needed.
 
 ```
 With API:    "List my servers" → "SSH into server 12345 as deploy and run ls"
-Without API: "Check server status at 95.216.156.89 — SSH as runcloud / mypassword"
+Without API: "Check server status at 95.216.156.89 - SSH as runcloud / mypassword"
 ```
 
 ### System Users Are Required for SSH
@@ -630,10 +680,10 @@ RunCloud uses isolated system users per web app. SSH tools need a username and p
 
 Then use that username and password in all SSH tool calls.
 
-### RunCloud Agent vs SSH — Two Ways to Check Health
+### RunCloud Agent vs SSH - Two Ways to Check Health
 
-- `get_server_health` — Uses RunCloud's agent data (polled every minute by RunCloud). Slight delay.
-- `ssh_server_status` — Runs commands directly on the server. Real-time. Works even if the RunCloud agent is slow.
+- `get_server_health` - Uses RunCloud's agent data (polled every minute by RunCloud). Slight delay.
+- `ssh_server_status` - Runs commands directly on the server. Real-time. Works even if the RunCloud agent is slow.
 
 ---
 
@@ -643,7 +693,7 @@ Then use that username and password in all SSH tool calls.
 runcloud-server-management-mcp/
 │
 ├── src/
-│   └── index.ts              ← Full MCP server — all 135 tools
+│   └── index.ts              ← Full MCP server - all 135 tools
 │
 ├── dist/                     ← Compiled JavaScript (auto-generated)
 │   └── index.js
@@ -670,12 +720,11 @@ runcloud-server-management-mcp/
 |------------|---------|---------|
 | **Node.js** | 18+ | Runtime (built-in `fetch()`) |
 | **npm** | 8+ | Package manager |
-| `@modelcontextprotocol/sdk` | latest | MCP protocol — how Claude talks to this server |
-| `ssh2` | ^1.x | SSH client — enables direct server connections |
+| `@modelcontextprotocol/sdk` | latest | MCP protocol - how AI clients communicate with this server |
+| `ssh2` | ^1.x | SSH client - enables direct server connections |
 | **TypeScript** | 5.x | Source language |
-| **Claude Desktop or Claude Code** | latest | The AI client |
 
-No database. No background services. No port forwarding. The MCP server is a process Claude spawns when you open it.
+No database. No background services. No port forwarding. The MCP server is a process spawned by the AI client when you open it.
 
 ### Telegram Bot (optional)
 
@@ -690,19 +739,7 @@ No database. No background services. No port forwarding. The MCP server is a pro
 | **systemd** | any | Runs bot and fix server as services |
 | **cron** | any | Runs monitor.sh every 10 minutes |
 
-No Telegram bot library needed — uses the raw Telegram Bot API.
-
----
-
-## Security
-
-- **RunCloud API key** — stored only in your local Claude config. Never leaves your machine.
-- **SSH credentials** — passed per-call. Never stored by this MCP.
-- **API traffic** — direct HTTPS to `manage.runcloud.io`. No relay, no third party.
-- **SSH traffic** — direct to your server. No relay, no third party.
-- **Telegram bot** — runs on your server, only responds to your chat ID.
-- **Fix server** — binds to `127.0.0.1` only. Not accessible from outside.
-- **API key scope** — full read/write access. Protect the machine where Claude is configured.
+No Telegram bot library needed - uses the raw Telegram Bot API.
 
 ---
 
@@ -722,7 +759,7 @@ No Telegram bot library needed — uses the raw Telegram Bot API.
 
 PRs welcome. Ideas:
 
-- More compound tools (e.g. `migrate_webapp` — clone a webapp to another server)
+- More compound tools (e.g. `migrate_webapp` - clone a webapp to another server)
 - Discord notification support in monitor.sh
 - RunCloud webhook receiver
 - Multi-account support (multiple API keys)
@@ -732,25 +769,25 @@ PRs welcome. Ideas:
 
 ## Related Projects
 
-- **[YouTube Channel Data MCP](https://github.com/adityaarsharma/youtube-channel-data-mcp)** — Connect Claude to your YouTube Analytics data
+- **[YouTube Channel Data MCP](https://github.com/adityaarsharma/youtube-channel-data-mcp)** - Connect Claude to your YouTube Analytics data
 
 ---
 
 ## License
 
-MIT — use it, modify it, ship it.
+MIT - use it, modify it, ship it.
 
 ---
 
 ## About
 
-Built by **[Aditya Sharma](https://adityaarsharma.com)** — marketing and growth at [POSIMYTH](https://posimyth.com), makers of WordPress tools.
+Built by **[Aditya Sharma](https://adityaarsharma.com)** - marketing and growth at [POSIMYTH](https://posimyth.com), makers of WordPress tools.
 
 - [adityaarsharma.com](https://adityaarsharma.com)
 - [@adityaarsharma on X](https://twitter.com/adityaarsharma)
 - [github.com/adityaarsharma](https://github.com/adityaarsharma)
 
-If this saved you time — **star the repo**
+If this saved you time -**star the repo**
 
 ---
 
