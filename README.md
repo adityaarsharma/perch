@@ -1,6 +1,4 @@
-# RunCloud Server Management MCP
-
-### The Complete Server Management Automation Kit
+# RunCloud MCP - Complete Server Management Automation Kit - Manage, Monitor & Fix Servers On the Go
 
 RunCloud API + Real-Time Monitoring + Self-Healing + Telegram Alerts. 135 tools packed into one MCP server. Manage servers, detect problems, fix them automatically, and get alerts on your phone.
 
