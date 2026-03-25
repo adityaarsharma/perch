@@ -192,6 +192,10 @@ def handle_message(msg):
         dur = parts[1] if len(parts) > 1 else '1h'
         secs = parse_duration(dur)
         muted_until = time.time() + secs
+        # Write mute file for monitor.sh
+        mute_file = '/tmp/server-monitor-muted'
+        with open(mute_file, 'w') as f:
+            f.write(str(int(muted_until)))
         until_str = time.strftime('%H:%M', time.localtime(muted_until))
         send(f'🔕 Alerts muted until {until_str}', chat_id=chat_id)
         return
@@ -199,6 +203,11 @@ def handle_message(msg):
     # /unmute
     if cmd == '/unmute':
         muted_until = 0.0
+        import os as _os
+        try:
+            _os.remove('/tmp/server-monitor-muted')
+        except FileNotFoundError:
+            pass
         send('🔔 Alerts re-enabled', chat_id=chat_id)
         return
 
@@ -228,7 +237,8 @@ def handle_message(msg):
         return
 
     # Unknown command
-    send(f'Unknown command: `{cmd}`\nType /help for all commands.', chat_id=chat_id)
+    safe_cmd = cmd.replace('`', '').replace('*', '').replace('_', '').replace('[', '').replace(']', '')
+    send(f'Unknown command: `{safe_cmd}`\nType /help for all commands.', chat_id=chat_id)
 
 
 def handle_callback(cb):
@@ -252,7 +262,8 @@ def handle_callback(cb):
             edit(mid, '🔄 *Rebooting server...*\nBot will reconnect automatically.', chat_id=chat_id)
             pending_reboot.pop(chat_id, None)
             time.sleep(1)
-            os.system('sudo reboot')
+            import subprocess
+            subprocess.run(['sudo', 'reboot'], check=False)
         else:
             edit(mid, '⏰ Confirmation expired. Run /reboot again.', chat_id=chat_id)
         return
@@ -275,7 +286,8 @@ def handle_callback(cb):
             out = out[:3800] + '\n…(truncated)'
         edit(mid, f'```\n{out}\n```', chat_id=chat_id, markup=main_kb())
     else:
-        edit(mid, f'Unknown action: `{data}`', chat_id=chat_id)
+        safe_data = data.replace('`', '').replace('*', '').replace('_', '').replace('[', '').replace(']', '')
+        edit(mid, f'Unknown action: `{safe_data}`', chat_id=chat_id)
 
 
 # ── Public helper for monitor.sh to check mute state ─────────────────────────

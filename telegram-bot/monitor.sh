@@ -4,6 +4,11 @@
 # Reads config from .env in same directory
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+for cmd in free df awk nproc jq curl nc md5sum; do
+  command -v "$cmd" >/dev/null 2>&1 || { echo "Missing required tool: $cmd"; exit 1; }
+done
+
 [ -f "$SCRIPT_DIR/.env" ] && source "$SCRIPT_DIR/.env"
 
 # Required config
@@ -27,14 +32,23 @@ fi
 
 # Collect metrics
 AVAIL_MB=$(free -m | awk 'NR==2{print $7}')
+AVAIL_MB=${AVAIL_MB:-0}
 TOTAL_MB=$(free -m | awk 'NR==2{print $2}')
+TOTAL_MB=${TOTAL_MB:-0}
 DISK_PCT=$(df / | awk 'NR==2{gsub(/%/,""); print $5}')
+DISK_PCT=${DISK_PCT:-0}
 DISK_USED=$(df -h / | awk 'NR==2{print $3}')
+DISK_USED=${DISK_USED:-0}
 LOAD1=$(awk '{print $1}' /proc/loadavg)
+LOAD1=${LOAD1:-0}
 CORES=$(nproc)
+CORES=${CORES:-1}
 LOAD_PCT=$(echo "$LOAD1 $CORES" | awk '{printf "%d", $1/$2*100}')
+LOAD_PCT=${LOAD_PCT:-0}
 NGINX_UP=$(systemctl is-active "$NGINX_SVC" 2>/dev/null)
+NGINX_UP=${NGINX_UP:-unknown}
 ORPHANS=$(ps -eo ppid,comm 2>/dev/null | awk '$1==1 && $2!="init" && $2!="systemd" && $2!="(sd-pam)" && $2!="dbus-daemon"' | wc -l | tr -d ' ')
+ORPHANS=${ORPHANS:-0}
 SERVER_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 SERVER_NAME="${MONITOR_SERVER_NAME:-$(hostname -s)}"
 

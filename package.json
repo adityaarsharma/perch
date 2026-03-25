@@ -1,9 +1,32 @@
 {
   "name": "runcloud-mcp",
   "version": "1.0.0",
-  "description": "MCP Server for RunCloud API v3",
+  "description": "MCP Server for RunCloud API v3 — manage, monitor, and auto-fix servers from Claude",
   "main": "dist/index.js",
   "type": "module",
+  "private": true,
+  "license": "MIT",
+  "author": "Aditya Sharma (https://adityaarsharma.com)",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adityaarsharma/runcloud-server-management-mcp"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "runcloud",
+    "mcp",
+    "model-context-protocol",
+    "server-management",
+    "server-monitoring",
+    "claude",
+    "ssh",
+    "telegram"
+  ],
+  "files": [
+    "dist/"
+  ],
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",

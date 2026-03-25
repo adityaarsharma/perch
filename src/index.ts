@@ -17,6 +17,27 @@ function getApiKey(): string {
   return key;
 }
 
+function shellEscape(s: string): string {
+  return "'" + s.replace(/'/g, "'\\''") + "'";
+}
+
+function validatePath(p: string): string {
+  if (/\.\./.test(p)) throw new Error("Path must not contain '..'");
+  if (!/^\/[a-zA-Z0-9._\/ -]+$/.test(p)) throw new Error("Path contains invalid characters");
+  return p;
+}
+
+function validateServiceName(s: string): string {
+  if (!/^[a-zA-Z0-9._@-]+$/.test(s)) throw new Error("Service name contains invalid characters");
+  return s;
+}
+
+function validateNumeric(v: unknown, name: string, min = 0, max = 999999): number {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || n > max) throw new Error(`${name} must be a number between ${min} and ${max}`);
+  return n;
+}
+
 async function runcloudRequest(
   method: string,
   path: string,
@@ -34,7 +55,7 @@ async function runcloudRequest(
   const response = await fetch(url, options);
   const text = await response.text();
   if (!response.ok) throw new Error(`RunCloud API error ${response.status}: ${text}`);
-  return text ? JSON.parse(text) : {};
+  try { return text ? JSON.parse(text) : {}; } catch { throw new Error(`Invalid JSON response from RunCloud API`); }
 }
 
 // Auto-fetch all pages of a paginated list endpoint
@@ -42,6 +63,7 @@ async function paginateAll(path: string): Promise<unknown[]> {
   const results: unknown[] = [];
   let page = 1;
   while (true) {
+    if (page > 200) break; // Safety limit
     const sep = path.includes("?") ? "&" : "?";
     const res = await runcloudRequest("GET", `${path}${sep}perPage=40&page=${page}`) as Record<string, unknown>;
     const data = (res.data ?? res) as unknown[];
@@ -80,8 +102,8 @@ async function sshExec(
           conn.end();
           resolve({ stdout: stdout.trim(), stderr: stderr.trim(), code });
         });
-        stream.on("data", (d: Buffer) => { stdout += d.toString(); });
-        stream.stderr.on("data", (d: Buffer) => { stderr += d.toString(); });
+        stream.on("data", (d: Buffer) => { stdout += d.toString(); if (stdout.length > 1048576) { stdout = stdout.slice(0, 1048576) + "\n[OUTPUT TRUNCATED AT 1MB]"; stream.close(); } });
+        stream.stderr.on("data", (d: Buffer) => { stderr += d.toString(); if (stderr.length > 1048576) { stderr = stderr.slice(0, 1048576) + "\n[OUTPUT TRUNCATED AT 1MB]"; stream.close(); } });
       });
     });
 
@@ -1822,7 +1844,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // ── SERVERS ─────────────────────────────────────────────────────────
       case "list_servers": {
         if (a.all) {
-          result = await paginateAll("/servers" + (a.search ? `?search=${a.search}` : ""));
+          result = await paginateAll("/servers" + (a.search ? `?search=${encodeURIComponent(a.search as string)}` : ""));
         } else {
           const p = new URLSearchParams();
           if (a.search) p.set("search", String(a.search));
@@ -1916,7 +1938,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // ── WEB APPLICATIONS ────────────────────────────────────────────────
       case "list_webapps": {
         if (a.all) {
-          const path = `/servers/${a.serverId}/webapps` + (a.search ? `?search=${a.search}` : "");
+          const path = `/servers/${a.serverId}/webapps` + (a.search ? `?search=${encodeURIComponent(a.search as string)}` : "");
           result = await paginateAll(path);
         } else {
           const p = new URLSearchParams();
@@ -2369,7 +2391,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // ── SSH EXECUTION ───────────────────────────────────────────────────
       case "ssh_run_command": {
         const ip = await getServerIP(a.serverId as number);
-        const timeout = ((a.timeoutSeconds as number) ?? 30) * 1000;
+        const timeout = validateNumeric(a.timeoutSeconds ?? 30, "timeoutSeconds", 1, 300) * 1000;
         const out = await sshExec(ip, a.username as string, a.password as string, a.command as string, timeout);
         result = {
           host: ip,
@@ -2382,7 +2404,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "ssh_wp_cli": {
         const ip = await getServerIP(a.serverId as number);
-        const cmd = `cd ${a.appPath} && wp ${a.wpcliCommand} --allow-root 2>&1`;
+        const cmd = `cd ${shellEscape(validatePath(a.appPath as string))} && wp ${shellEscape(a.wpcliCommand as string)} --allow-root 2>&1`;
         const out = await sshExec(ip, a.username as string, a.password as string, cmd, 60000);
         result = {
           host: ip,
@@ -2395,7 +2417,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "ssh_artisan": {
         const ip = await getServerIP(a.serverId as number);
-        const cmd = `cd ${a.appPath} && php artisan ${a.artisanCommand} 2>&1`;
+        const cmd = `cd ${shellEscape(validatePath(a.appPath as string))} && php artisan ${shellEscape(a.artisanCommand as string)} 2>&1`;
         const out = await sshExec(ip, a.username as string, a.password as string, cmd, 60000);
         result = {
           host: ip,
@@ -2408,8 +2430,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "ssh_tail_log": {
         const ip = await getServerIP(a.serverId as number);
-        const lines = (a.lines as number) ?? 100;
-        const cmd = `tail -n ${lines} ${a.logPath} 2>&1`;
+        const lines = validateNumeric(a.lines ?? 100, "lines", 1, 10000);
+        const cmd = `tail -n ${lines} ${shellEscape(validatePath(a.logPath as string))} 2>&1`;
         const out = await sshExec(ip, a.username as string, a.password as string, cmd, 15000);
         result = {
           host: ip,
@@ -2753,9 +2775,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const path = a.appPath as string;
         const [info, checksums, plugins, cron] = await Promise.allSettled([
           sshExec(ip, u, p, `wp --info --allow-root 2>&1 | head -20`, 20000),
-          sshExec(ip, u, p, `cd ${path} && wp core verify-checksums --allow-root 2>&1`, 30000),
-          sshExec(ip, u, p, `cd ${path} && wp plugin list --status=active --format=count --allow-root 2>&1`, 15000),
-          sshExec(ip, u, p, `cd ${path} && wp cron event list --format=count --allow-root 2>&1`, 15000),
+          sshExec(ip, u, p, `cd ${shellEscape(validatePath(path))} && wp core verify-checksums --allow-root 2>&1`, 30000),
+          sshExec(ip, u, p, `cd ${shellEscape(validatePath(path))} && wp plugin list --status=active --format=count --allow-root 2>&1`, 15000),
+          sshExec(ip, u, p, `cd ${shellEscape(validatePath(path))} && wp cron event list --format=count --allow-root 2>&1`, 15000),
         ]);
         result = {
           host: ip,
@@ -2769,14 +2791,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       }
       case "wp_outdated_plugins": {
         const ip = await getServerIP(a.serverId as number);
-        const cmd = `cd ${a.appPath} && wp plugin list --update=available --fields=name,version,update_version --format=table --allow-root 2>&1`;
+        const cmd = `cd ${shellEscape(validatePath(a.appPath as string))} && wp plugin list --update=available --fields=name,version,update_version --format=table --allow-root 2>&1`;
         const out = await sshExec(ip, a.username as string, a.password as string, cmd, 60000);
         result = { host: ip, appPath: a.appPath, output: out.stdout || out.stderr, exitCode: out.code };
         break;
       }
       case "wp_admin_audit": {
         const ip = await getServerIP(a.serverId as number);
-        const cmd = `cd ${a.appPath} && wp user list --role=administrator --fields=ID,user_login,user_email,user_registered --format=table --allow-root 2>&1`;
+        const cmd = `cd ${shellEscape(validatePath(a.appPath as string))} && wp user list --role=administrator --fields=ID,user_login,user_email,user_registered --format=table --allow-root 2>&1`;
         const out = await sshExec(ip, a.username as string, a.password as string, cmd, 30000);
         result = { host: ip, appPath: a.appPath, adminUsers: out.stdout || out.stderr, exitCode: out.code };
         break;
@@ -2788,7 +2810,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const path = a.appPath as string;
         const flushRedis = a.flushRedis === true;
         const cmds = [
-          `cd ${path} && wp cache flush --allow-root 2>&1`,
+          `cd ${shellEscape(validatePath(path))} && wp cache flush --allow-root 2>&1`,
           `php -r "if(function_exists('opcache_reset')){opcache_reset();echo 'OPcache cleared';}else{echo 'OPcache not available';}" 2>&1`,
         ];
         if (flushRedis) cmds.push(`redis-cli FLUSHDB 2>&1`);
@@ -2825,7 +2847,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       case "nginx_top_ips": {
         const ip = await getServerIP(a.serverId as number);
         const logPath = (a.logPath as string) ?? "/var/log/nginx/access.log";
-        const cmd = `awk '{print $1}' ${logPath} | sort | uniq -c | sort -rn | head -15 2>&1`;
+        const cmd = `awk '{print $1}' ${shellEscape(validatePath(logPath))} | sort | uniq -c | sort -rn | head -15 2>&1`;
         const out = await sshExec(ip, a.username as string, a.password as string, cmd, 20000);
         result = { host: ip, logPath, topIPs: out.stdout || out.stderr, exitCode: out.code };
         break;
@@ -2836,9 +2858,9 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const u = a.username as string;
         const p = a.password as string;
         const [total, last20, grouped] = await Promise.allSettled([
-          sshExec(ip, u, p, `wc -l < ${logPath} 2>&1`, 10000),
-          sshExec(ip, u, p, `tail -20 ${logPath} 2>&1`, 10000),
-          sshExec(ip, u, p, `grep -oP '(?<=PHP )(Fatal error|Warning|Notice|Parse error|Deprecated)' ${logPath} | sort | uniq -c | sort -rn 2>&1`, 15000),
+          sshExec(ip, u, p, `wc -l < ${shellEscape(validatePath(logPath))} 2>&1`, 10000),
+          sshExec(ip, u, p, `tail -20 ${shellEscape(validatePath(logPath))} 2>&1`, 10000),
+          sshExec(ip, u, p, `grep -oP '(?<=PHP )(Fatal error|Warning|Notice|Parse error|Deprecated)' ${shellEscape(validatePath(logPath))} | sort | uniq -c | sort -rn 2>&1`, 15000),
         ]);
         result = {
           host: ip,
@@ -2896,9 +2918,10 @@ else echo "\${#ISSUES[@]} issue(s) found and fixed:"; for i in "\${ISSUES[@]}"; 
 
       case "ssh_restart_service": {
         const svc = a.service as string;
+        const safeSvc = validateServiceName(svc);
         const out = await sshExec(
           a.host as string, a.username as string, a.password as string,
-          `SVC="${svc}"
+          `SVC="${safeSvc}"
 [ "$SVC" = "nginx" ] && systemctl list-units --all 2>/dev/null | grep -q nginx-rc && SVC=nginx-rc
 if [ "$SVC" = "n8n" ]; then
   if systemctl list-units --all 2>/dev/null | grep -q " n8n."; then sudo systemctl restart n8n 2>&1; echo "n8n restarted via systemd: $(systemctl is-active n8n)"
@@ -2915,6 +2938,7 @@ else sudo systemctl restart $SVC 2>&1; sleep 1; echo "Service $SVC — status: $
 
       case "ssh_kill_orphans": {
         const dryRun     = (a.dryRun as boolean) !== false;
+        if (a.processName && !/^[a-zA-Z0-9._-]+$/.test(a.processName as string)) throw new Error("Process name contains invalid characters");
         const nameFilter = a.processName ? `&& $3=="${a.processName as string}"` : "";
         const killCmd    = dryRun
           ? `echo "(dry-run: pass dryRun=false to actually kill)"`
@@ -2931,7 +2955,7 @@ echo "=== Orphan Processes (PPID=1) ==="; echo "$ORPHANS" | awk '{printf "PID %-
       }
 
       case "ssh_disk_cleanup": {
-        const minMB  = (a.minSizeMB as number) || 50;
+        const minMB = validateNumeric(a.minSizeMB ?? 50, "minSizeMB", 1, 10000);
         const dryRun = (a.dryRun as boolean) !== false;
         const clearCmd = dryRun
           ? `echo "(dry-run: pass dryRun=false to clear files)"`
@@ -2948,7 +2972,7 @@ ${clearCmd}`,
       }
 
       case "ssh_check_ports": {
-        const ports = Array.isArray(a.ports) ? (a.ports as number[]) : [];
+        const ports = (a.ports as number[] ?? []).map(p => validateNumeric(p, "port", 1, 65535));
         const grep  = ports.length > 0 ? `| grep -E ":(${ports.join("|")})\\b"` : "";
         const out   = await sshExec(
           a.host as string, a.username as string, a.password as string,
@@ -2988,8 +3012,9 @@ ${clearCmd}`,
     };
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
+    const safeMsg = msg.replace(/Bearer\s+\S+/gi, "Bearer [REDACTED]").replace(/password[=:]\s*\S+/gi, "password=[REDACTED]");
     return {
-      content: [{ type: "text", text: `Error: ${msg}` }],
+      content: [{ type: "text", text: `Error: ${safeMsg}` }],
       isError: true,
     };
   }
