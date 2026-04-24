@@ -1,49 +1,139 @@
-# RunCloud MCP - Complete Server Management Automation Kit - Manage, Monitor & Fix Servers On the Go
+<div align="center">
 
-RunCloud API + Real-Time Monitoring + Self-Healing + Telegram Alerts. 135 tools packed into one MCP server. Manage servers, detect problems, fix them automatically, and get alerts on your phone.
+# 🪶 Perch
 
-**Control Plane. Observability. Automation. Alerts. All in one.**
+### Servers under one wing.
 
+**The Telegram bot + Claude Code plugin that makes RunCloud server management as easy as Vercel.**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+[![Always Free](https://img.shields.io/badge/Always-Free-brightgreen?style=flat-square)]()
 [![RunCloud](https://img.shields.io/badge/RunCloud-API%20v3-0066CC?style=flat-square)](https://runcloud.io)
 [![MCP](https://img.shields.io/badge/Model%20Context%20Protocol-Compatible-blueviolet?style=flat-square)](https://modelcontextprotocol.io)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green?style=flat-square&logo=node.js)](https://nodejs.org)
 [![Tools](https://img.shields.io/badge/Tools-135-orange?style=flat-square)](#full-tool-catalog-135-tools)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)](LICENSE)
+
+</div>
 
 ---
 
-## Why This Exists
+## What is Perch?
 
-[RunCloud](https://runcloud.io) is a server management panel for deploying web apps on any cloud - DigitalOcean, Hetzner, AWS, Vultr, Linode, or bare metal. It has a powerful REST API, but using it means reading docs, writing curl commands, and switching between tabs.
+Perch is a **Telegram bot + Claude Code plugin** that gives agencies, freelancers, and developers a phone-first control surface for RunCloud-managed servers.
 
-This MCP server brings three things together into one automation kit:
+Think Vercel-grade DX, but on your own VPS. On Telegram. Free forever.
 
-1. **RunCloud API** - full server management (web apps, databases, SSL, firewall, deployments, cron jobs)
-2. **SSH Monitoring + Self-Healing** - real-time health checks that detect and fix problems automatically
-3. **Telegram Bot** - 24/7 alerts on your phone with one-tap fix buttons
+```
+🪶 Perch Alert — production-1 (95.216.156.89)
 
-Works with Claude Desktop and Claude Code. You describe what you want in plain English. The AI handles the API calls, SSH commands, and server fixes.
+❌ nginx-rc is down
+💾 Disk: 87% full
+🔄 PHP-FPM: restarted 3x in last hour
 
-**Example:**
+[🔧 Smart Fix]  [📊 Status]
+[🌐 Nginx]      [💾 Disk]
+[🔇 Mute 1h]    [✅ Ack]
+```
+
+Tap `🔧 Smart Fix`. The fix runs. The result lands in your chat. Done.
+
+---
+
+## Why Perch Exists
+
+Running production servers today is a mess of bad options:
+
+| Option | Reality |
+|--------|---------|
+| **Direct SSH** | Fast for experts, terrifying for everyone else. One typo wipes a client site. No backups. No rollback. No audit. |
+| **Vercel / Render / Railway** | Beautiful UX, but locked in, expensive at scale, and you can't run WordPress, Laravel queues, n8n, or anything custom without paying $$$ per service. |
+| **cPanel / Plesk** | Bloated, ugly, slow, expensive licenses, dated UX. |
+| **Raw cloud** (DO, Hetzner, AWS) | Full control, zero guardrails. You're the sysadmin now. |
+
+**There's no middle path that gives you Vercel-grade DX on your own VPS — until you combine [RunCloud](https://runcloud.io) (the GUI + safety layer) with Perch (the on-the-go control).**
+
+### Why RunCloud, Not Direct SSH
+
+RunCloud is the safety layer. It enforces good defaults so mistakes stay scoped:
+
+| Direct SSH | RunCloud |
+|------------|----------|
+| One typo can wipe production | Web app isolation, can't `rm -rf /` from the panel |
+| No backups unless you build them | One-click backups + S3/Wasabi integration |
+| Manual nginx configs (hours to debug) | Pre-built `nginx-rc` + safe `extra.d/` for customization |
+| Manual SSL renewals or break things | Auto-renewing Let's Encrypt with one toggle |
+| Manual PHP version juggling | Switch PHP versions per app via dropdown |
+| No GUI for clients | Read-only client access to specific apps |
+| Audit trail = your shell history | Built-in activity log |
+| Adding a webapp = 30+ commands | Click "New Web App", done |
+
+**Why not Vercel?** Because:
+- WordPress, Laravel queues, n8n, MCPs, Python workers — all run native on RunCloud
+- $5–$20/month VPS instead of $200+/month per service
+- Your data stays on your hardware (Hetzner, DigitalOcean, AWS — your pick)
+- No vendor lock-in, no cold starts, no per-request pricing
+
+### Why a Telegram Bot
+
+You don't always have your laptop. The 4 a.m. alert. The dinner-table client emergency. The "is the site up?" question while in transit.
+
+Perch lives where you already are — on your phone — and gives you:
+
+- **Real-time alerts** when nginx, PHP, MCPs, or n8n go down
+- **One-tap fixes** from inside the alert message
+- **Natural language** queries: *"is the store site up?"* → live status
+- **Multi-server view** across every client environment
+- **Safe diagnostics** (disk, ports, logs) without ever opening SSH
+
+---
+
+## Perch is Always Free
+
+No Pro tier. No license keys. No paywall. Ever.
+
+Perch is a community tool for the RunCloud ecosystem. Built and maintained by [Aditya Sharma](https://adityaarsharma.com).
+
+If you want to support the project: ⭐ star the repo, share it with one fellow agency owner, or [say hi on Telegram](https://t.me/adityaarsharma).
+
+---
+
+## Who Perch is For
+
+| Audience | Use case |
+|----------|----------|
+| **Web agencies (5–50 client sites)** | On-call coverage without a 24/7 sysadmin. Delegate server access without giving SSH keys. Charge clients for hosting/maintenance retainers with confidence. |
+| **Solo devs / freelancers** | Run your own SaaS on a VPS. Get phone alerts when your stuff breaks at 3 a.m. without spinning up Datadog. |
+| **Small WordPress hosts** | Manage 50+ sites from RunCloud with a multi-server overview that fits in your pocket. |
+
+---
+
+## What Perch Does — Three Layers
+
+| Layer | What It Does | Requires |
+|-------|-------------|----------|
+| **🪶 Telegram Bot** (Alert + Control Layer) | Automated alerts every 10 minutes, inline fix buttons, 15+ commands for remote server control from your phone. | Telegram bot token |
+| **🛠️ RunCloud API** (Control Plane) | Full server management — web apps, databases, SSL, domains, firewall, deployments, cron jobs, and more. 128 tools. | RunCloud API key |
+| **🩺 SSH Monitoring + Self-Healing** (Observability) | Real-time health checks, auto-fix broken services, kill orphan processes, clean disk space. 7 tools. | SSH access only (any Linux server) |
+
+**All three layers work independently.** Use just one, or combine all three. No RunCloud account needed for SSH monitoring. No SSH needed for RunCloud API tools. No Claude needed for the Telegram bot.
+
+---
+
+## Quick Example
 
 > *"Set up a WordPress site on my production server with PHP 8.2, create the database, system user, and install SSL."*
 
 Six API calls executed in the right order, with the right parameters. Done.
 
----
+> *"Is anything broken across all my servers?"*
 
-## The Kit - Three Layers
+Multi-server health scan in 4 seconds. List of affected sites with one-tap fix buttons.
 
-| Layer | What It Does | Requires |
-|-------|-------------|----------|
-| **RunCloud API** (Control Plane) | Full server management - web apps, databases, SSL, domains, firewall, deployments, cron jobs, and more. 128 tools. | RunCloud API key |
-| **SSH Monitoring + Self-Healing** (Observability) | Real-time health checks, auto-fix broken services, kill orphan processes, clean disk space. 7 tools. | SSH access only (any Linux server) |
-| **Telegram Bot** (Alert Layer) | Automated alerts every 10 minutes, inline fix buttons, 15+ commands for remote server control from your phone. | Telegram bot token |
+> *"Disk on store.posimyth.com is filling up — show me the biggest log files and clear the old ones."*
 
-**All three layers work independently.** Use just one, or combine all three. No RunCloud account needed for SSH monitoring. No SSH needed for RunCloud API tools.
+Diagnostic + safe cleanup, dry-run shown first, you confirm, it executes.
 
 ---
+
 
 ## Security
 
@@ -58,7 +148,7 @@ Server management tools demand strict security. Here is how every layer is locke
 ### Credential Protection
 
 - **RunCloud API key** stored only in your local MCP config file - never transmitted anywhere except direct to RunCloud
-- **SSH credentials** passed per-call only - never stored, never cached, never written to disk by this MCP
+- **SSH credentials** passed per-call only - never stored, never cached, never written to disk by Perch
 - **Telegram bot token** stored in `.env` on your server with `chmod 600` permissions
 
 ### Input Validation & Injection Prevention
@@ -83,7 +173,7 @@ Server management tools demand strict security. Here is how every layer is locke
 
 - `.env` files set to `chmod 600` (owner read/write only)
 - Failed authentication attempts are logged
-- RunCloud API key scope is full read/write - protect the machine where the MCP is configured
+- RunCloud API key scope is full read/write - protect the machine where Perch is configured
 
 ---
 
@@ -176,7 +266,7 @@ All clear                      →  Reports "healthy - nothing needed fixing"
 
 RunCloud installs its own nginx binary (`nginx-rc`) instead of standard `nginx`. Most monitoring tools check the wrong service name and report "inactive" even when the web server is running fine.
 
-All SSH tools in this MCP auto-detect which one is running:
+All SSH tools in Perch auto-detect which one is running:
 
 ```
 systemctl is-active nginx-rc   →  active  →  use nginx-rc
@@ -306,7 +396,7 @@ Open the config file:
 
 **3. Restart Claude Desktop**
 
-The MCP server starts automatically. You'll see a hammer icon in Claude Desktop confirming tools are loaded.
+Perch starts automatically. You'll see a hammer icon in Claude Desktop confirming tools are loaded.
 
 **4. Claude Code (terminal)**
 
@@ -722,7 +812,7 @@ runcloud-server-management-mcp/
 | `ssh2` | ^1.x | SSH client - enables direct server connections |
 | **TypeScript** | 5.x | Source language |
 
-No database. No background services. No port forwarding. The MCP server is a process spawned by the AI client when you open it.
+No database. No background services. No port forwarding. Perch is a process spawned by the AI client when you open it.
 
 ### Telegram Bot (optional)
 
