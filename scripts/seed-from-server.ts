@@ -66,9 +66,12 @@ function detectType(dir: string): WebappOnDisk["type"] {
     } catch { return false; }
   };
 
+  // ─── Strong markers (single file = clear answer) ───
   if (has("wp-config.php"))         return "wordpress";
   if (has("artisan"))               return "laravel";
   if (has("docker-compose.yml") || has("Dockerfile")) return "docker";
+
+  // ─── package.json: look at deps to disambiguate node / n8n ───
   if (has("package.json")) {
     try {
       const pkg = execSync(`sudo cat "${dir}package.json"`, { encoding: "utf8" });
@@ -78,7 +81,25 @@ function detectType(dir: string): WebappOnDisk["type"] {
       return "node";
     } catch { return "node"; }
   }
-  // No source-of-truth marker — check for plain HTML
+
+  // ─── Python markers ───
+  if (has("pyproject.toml") || has("requirements.txt") || has("setup.py")
+      || has(".venv") || has("venv") || has("manage.py")) {
+    return "node"; // closest tag in current schema (will rename to 'python' once schema accepts it)
+  }
+
+  // ─── PM2-managed MCP host folder (multiple Node tools under one dir) ───
+  // Many MCP setups live in a folder with no root package.json — instead each
+  // tool has its own subfolder. If we see lots of *.py / *.js / mcp-* dirs at
+  // top level, treat as a "node" host.
+  try {
+    const listing = execSync(`sudo ls -1 "${dir}"`, { encoding: "utf8" });
+    const entries = listing.split("\n").filter(Boolean);
+    const looksLikeMcpHost = entries.some(e => /^mcp[-_]/.test(e) || e === "niyati.py" || /\.py$/.test(e));
+    if (looksLikeMcpHost) return "node"; // best fit until we add 'python' / 'mcp-host' types
+  } catch { /* ignore */ }
+
+  // ─── Plain HTML last resort ───
   if (has("index.html"))            return "static";
   return "unknown";
 }
