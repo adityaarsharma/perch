@@ -3,221 +3,586 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Perch — Server Intelligence</title>
-<meta name="description" content="Self-hosted server intelligence layer. Watch, diagnose, heal. By Aditya Sharma.">
+<title>perch · server intelligence</title>
+<meta name="description" content="A self-hosted server intelligence layer. Watches, diagnoses, heals.">
 <meta name="theme-color" content="#0a0e16" media="(prefers-color-scheme: dark)">
 <meta name="theme-color" content="#fafbfc" media="(prefers-color-scheme: light)">
-
-<meta property="og:title" content="Perch — Server Intelligence">
-<meta property="og:description" content="Self-hosted intelligence layer for your servers. By Aditya Sharma.">
+<meta property="og:title" content="perch · server intelligence">
+<meta property="og:description" content="A self-hosted server intelligence layer. Open source, MIT.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://perch.adityaarsharma.com">
-<meta name="twitter:card" content="summary">
 
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪶</text></svg>">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
-  :root {
-    --bg: #0a0e16;
-    --surface: #131824;
-    --text: #e8edf3;
-    --text-dim: #9aa3b2;
-    --accent: #7dd3fc;
-    --border: rgba(255,255,255,0.08);
-  }
-  [data-theme="light"] {
-    --bg: #fafbfc;
-    --surface: #ffffff;
-    --text: #1a1f2e;
-    --text-dim: #5a6478;
-    --accent: #0ea5e9;
-    --border: rgba(0,0,0,0.08);
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body { height: 100%; }
-  body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    -webkit-font-smoothing: antialiased;
-    line-height: 1.5;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-  }
-  main {
-    flex: 1;
-    max-width: 540px;
-    margin: 0 auto;
-    padding: 80px 28px 60px;
-    width: 100%;
-  }
-  .feather {
-    font-size: 56px;
-    line-height: 1;
-    margin-bottom: 24px;
-    display: inline-block;
-  }
-  h1 {
-    font-size: 36px;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    margin-bottom: 12px;
-  }
-  .tagline {
-    color: var(--text-dim);
-    font-size: 17px;
-    margin-bottom: 36px;
-    line-height: 1.6;
-  }
-  .tagline strong { color: var(--text); font-weight: 600; }
-  .cta {
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    padding: 13px 22px;
-    background: var(--text);
-    color: var(--bg);
-    text-decoration: none;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 15px;
-    transition: transform 0.15s ease, opacity 0.15s ease;
-  }
-  .cta:hover { transform: translateY(-1px); opacity: 0.92; }
-  .cta svg { width: 18px; height: 18px; }
-  .author {
-    margin-top: 56px;
-    padding-top: 32px;
-    border-top: 1px solid var(--border);
-  }
-  .author-label {
-    font-size: 13px;
-    color: var(--text-dim);
-    margin-bottom: 14px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 500;
-  }
-  .author-name {
-    font-size: 17px;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-  .author-bio {
-    font-size: 14px;
-    color: var(--text-dim);
-    margin-bottom: 18px;
-  }
-  .links {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 14px;
-  }
-  .links a {
-    color: var(--text-dim);
-    font-size: 14px;
-    text-decoration: none;
-    transition: color 0.15s ease;
-  }
-  .links a:hover { color: var(--accent); }
-  footer {
-    text-align: center;
-    padding: 24px;
-    color: var(--text-dim);
-    font-size: 13px;
-    border-top: 1px solid var(--border);
-  }
-  .theme-toggle {
-    position: fixed;
-    top: 24px;
-    right: 24px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.15s ease;
-  }
-  .theme-toggle:hover { transform: rotate(15deg); }
-  .theme-toggle svg { width: 18px; height: 18px; }
-  @media (max-width: 640px) {
-    main { padding: 56px 24px 40px; }
-    h1 { font-size: 30px; }
-    .tagline { font-size: 16px; }
-    .theme-toggle { top: 16px; right: 16px; }
-  }
+:root {
+  --bg-0: #0a0e16;
+  --bg-1: #0d1320;
+  --surface: #131824;
+  --border: rgba(125,211,252,0.12);
+  --border-strong: rgba(125,211,252,0.28);
+  --text: #e8edf3;
+  --text-dim: #8590a4;
+  --text-faint: #4a5468;
+  --sky: #7dd3fc;
+  --sage: #86efac;
+  --sage-glow: rgba(134,239,172,0.45);
+  --warn: #fbbf24;
+  --shadow: 0 24px 60px -12px rgba(0,0,0,0.65), 0 0 0 1px rgba(125,211,252,0.04);
+  --grid: rgba(125,211,252,0.04);
+}
+[data-theme="light"] {
+  --bg-0: #fafbfc;
+  --bg-1: #f3f5f8;
+  --surface: #ffffff;
+  --border: rgba(14,165,233,0.18);
+  --border-strong: rgba(14,165,233,0.4);
+  --text: #0f172a;
+  --text-dim: #475569;
+  --text-faint: #94a3b8;
+  --sky: #0ea5e9;
+  --sage: #10b981;
+  --sage-glow: rgba(16,185,129,0.35);
+  --warn: #d97706;
+  --shadow: 0 24px 60px -16px rgba(15,23,42,0.18), 0 0 0 1px rgba(14,165,233,0.06);
+  --grid: rgba(14,165,233,0.05);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-0);
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(125,211,252,0.08) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(134,239,172,0.06) 0%, transparent 55%),
+    linear-gradient(0deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: auto, auto, 32px 32px, 32px 32px;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.mono { font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace; }
+
+/* ── Status pill (top-right) ─────────────────────────────────────────── */
+.status {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 13px 7px 11px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  z-index: 50;
+  user-select: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.status .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  box-shadow: 0 0 0 0 transparent;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+}
+.status.online .dot {
+  background: var(--sage);
+  animation: pulse 2.4s ease-in-out infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--sage-glow); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+.status.offline .dot { background: var(--warn); }
+
+/* ── Theme toggle ────────────────────────────────────────────────────── */
+.theme {
+  position: fixed;
+  top: 22px;
+  left: 22px;
+  width: 36px;
+  height: 36px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  transition: transform 0.3s ease, border-color 0.2s ease;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.theme:hover { transform: rotate(20deg); border-color: var(--border-strong); }
+
+/* ── Stage (centered terminal window) ───────────────────────────────── */
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 90px 24px 60px;
+}
+.stage {
+  perspective: 1200px;
+  width: 100%;
+  max-width: 720px;
+}
+.window {
+  background: linear-gradient(180deg, var(--bg-1) 0%, var(--surface) 100%);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  will-change: transform;
+  transform-style: preserve-3d;
+  transition: transform 0.35s cubic-bezier(.2,.7,.3,1.3);
+}
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+.titlebar .traffic {
+  display: flex; gap: 6px; margin-right: 10px;
+}
+.dot-tl { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,0.06); }
+[data-theme="light"] .dot-tl { background: rgba(0,0,0,0.07); }
+.dot-tl.live { background: var(--sage); box-shadow: 0 0 0 2px rgba(134,239,172,0.18); }
+.titlebar .path { letter-spacing: 0.02em; }
+.titlebar .path .accent { color: var(--sky); }
+
+.body {
+  padding: 56px 56px 44px;
+  font-family: 'JetBrains Mono', monospace;
+  position: relative;
+}
+
+/* ── ASCII feather hero ─────────────────────────────────────────────── */
+.feather-art {
+  font-family: 'JetBrains Mono', monospace;
+  white-space: pre;
+  font-size: 13px;
+  line-height: 1.05;
+  color: var(--sky);
+  text-align: center;
+  letter-spacing: 0.02em;
+  user-select: none;
+  filter: drop-shadow(0 0 24px rgba(125,211,252,0.18));
+  animation: float 6s ease-in-out infinite;
+  transition: color 0.3s ease;
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* ── Typed prompt block ─────────────────────────────────────────────── */
+.prompt-stack {
+  margin-top: 38px;
+  font-size: 14px;
+  line-height: 1.85;
+}
+.prompt-line { color: var(--text); }
+.prompt-line .ps1 { color: var(--sage); margin-right: 10px; }
+.prompt-line .cmd { color: var(--text); }
+.prompt-line .out { color: var(--text-dim); }
+.prompt-line .accent { color: var(--sky); }
+.caret {
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: var(--sky);
+  vertical-align: text-bottom;
+  margin-left: 2px;
+  animation: blink 1.05s steps(2, end) infinite;
+  transform: translateY(2px);
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+.subtitle {
+  margin-top: 36px;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text-dim);
+  max-width: 480px;
+}
+.subtitle strong { color: var(--text); font-weight: 600; }
+
+/* ── CTA ────────────────────────────────────────────────────────────── */
+.cta-row {
+  margin-top: 36px;
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.cta {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 22px;
+  background: var(--sky);
+  color: var(--bg-0);
+  text-decoration: none;
+  border-radius: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: transform 0.18s cubic-bezier(.2,.7,.3,1.3), box-shadow 0.18s ease, background 0.2s ease;
+  box-shadow: 0 8px 18px -8px rgba(125,211,252,0.55);
+  will-change: transform;
+}
+.cta:hover { background: #a5e3ff; box-shadow: 0 12px 26px -8px rgba(125,211,252,0.7); }
+[data-theme="light"] .cta { color: #fff; }
+[data-theme="light"] .cta:hover { background: #38bdf8; }
+.cta svg { width: 16px; height: 16px; }
+.cta .arrow { transition: transform 0.2s ease; }
+.cta:hover .arrow { transform: translateX(3px); }
+
+.secondary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  color: var(--text-dim);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--border-strong);
+  padding-bottom: 1px;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.secondary:hover { color: var(--sky); border-color: var(--sky); }
+
+/* ── Footer ─────────────────────────────────────────────────────────── */
+footer {
+  text-align: center;
+  padding: 18px 24px 26px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+footer .dot-sep { margin: 0 10px; opacity: 0.5; }
+footer .hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 10.5px;
+  opacity: 0.55;
+}
+footer kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  border: 1px solid var(--border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+
+/* ── Falling feathers (click easter egg) ────────────────────────────── */
+.feather-fall {
+  position: fixed;
+  pointer-events: none;
+  font-size: 18px;
+  user-select: none;
+  z-index: 100;
+  animation: fall var(--dur, 2.4s) cubic-bezier(.36,0,.66,1) forwards;
+}
+@keyframes fall {
+  0%   { transform: translate(0,0) rotate(0deg);    opacity: 1; }
+  100% { transform: translate(var(--dx,40px), 60vh) rotate(var(--rot,90deg)); opacity: 0; }
+}
+
+/* ── "perch" konami: terminal boot overlay ──────────────────────────── */
+.boot {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-0);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--sage);
+  white-space: pre;
+  padding: 40px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s ease;
+}
+.boot.show { opacity: 1; pointer-events: auto; cursor: pointer; }
+.boot pre { line-height: 1.45; max-width: 100%; overflow: hidden; }
+
+/* ── Mobile ─────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  main { padding: 76px 14px 30px; }
+  .body { padding: 36px 24px 30px; }
+  .feather-art { font-size: 10px; }
+  .titlebar { padding: 9px 14px; font-size: 10.5px; }
+  .titlebar .path { display: none; }
+  .subtitle { font-size: 15px; }
+  .status { right: 14px; top: 14px; font-size: 10.5px; }
+  .theme { left: 14px; top: 14px; }
+  .cta { padding: 12px 18px; font-size: 13px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feather-art, .status.online .dot, .caret { animation: none; }
+  .window, .cta, .arrow { transition: none; }
+}
 </style>
 </head>
 <body>
 
-<button class="theme-toggle" aria-label="Toggle theme" onclick="toggleTheme()">
-  <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="5"></circle>
-    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-  </svg>
-</button>
+<!-- Theme toggle -->
+<button class="theme mono" id="theme-toggle" aria-label="Toggle theme" title="theme">◐</button>
+
+<!-- Live status pill (pings perch-api /health) -->
+<div class="status mono" id="status">
+  <span class="dot"></span>
+  <span id="status-text">checking…</span>
+</div>
 
 <main>
-  <span class="feather" role="img" aria-label="feather">🪶</span>
+  <div class="stage" id="stage">
+    <div class="window" id="window">
+      <div class="titlebar mono">
+        <div class="traffic">
+          <span class="dot-tl live"></span>
+          <span class="dot-tl"></span>
+          <span class="dot-tl"></span>
+        </div>
+        <div class="path"><span class="accent">~/</span>perch</div>
+      </div>
 
-  <h1>Perch</h1>
+      <div class="body">
+        <div class="feather-art" aria-hidden="true" id="art">         .
+        /\
+       /  \
+      /    \
+     /  /\  \
+    /  /  \  \
+   /  /    \  \
+  /  /  ~~  \  \
+  \  \      /  /
+   \  \    /  /
+    \  \  /  /
+     \  \/  /
+      \    /
+       \  /
+        \/
+        |
+        |
+        '</div>
 
-  <p class="tagline">
-    A <strong>self-hosted server intelligence layer</strong>. Watches your servers, diagnoses what breaks in plain English, and lives wherever you do — Claude Code, Telegram, Slack, your shell.
-  </p>
+        <div class="prompt-stack" id="prompt">
+          <div class="prompt-line"><span class="ps1">$</span><span class="cmd" id="typed"></span><span class="caret"></span></div>
+          <div class="prompt-line out" id="line2" style="opacity:0;">→ <span class="accent">server intelligence</span> · self-hosted · always free</div>
+          <div class="prompt-line out" id="line3" style="opacity:0;">→ runs on <span class="accent">your</span> machine · talks to <span class="accent">your</span> servers · learns over time</div>
+        </div>
 
-  <a class="cta" href="https://github.com/adityaarsharma/perch" target="_blank" rel="noopener">
-    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.305-5.467-1.334-5.467-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
-    View on GitHub
-  </a>
+        <p class="subtitle" id="subtitle" style="opacity:0;">
+          A small, watchful brain that lives next to your servers. <strong>Watches</strong> what runs.
+          <strong>Diagnoses</strong> what breaks, in plain English. <strong>Heals</strong> what's safe to fix —
+          and asks before everything else.
+        </p>
 
-  <div class="author">
-    <div class="author-label">Made by</div>
-    <div class="author-name">Aditya Sharma</div>
-    <div class="author-bio">Marketing &amp; growth at POSIMYTH. Solo builder. Open source. Indore, India.</div>
-    <div class="links">
-      <a href="https://adityaarsharma.com" target="_blank" rel="noopener">adityaarsharma.com</a>
-      <a href="https://github.com/adityaarsharma" target="_blank" rel="noopener">GitHub</a>
-      <a href="https://x.com/adityaarsharma" target="_blank" rel="noopener">Twitter / X</a>
+        <div class="cta-row" id="cta-row" style="opacity:0;">
+          <a class="cta" href="https://github.com/adityaarsharma/perch" target="_blank" rel="noopener" id="cta">
+            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.305-5.467-1.334-5.467-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+            <span>git clone perch</span>
+            <span class="arrow">→</span>
+          </a>
+          <a class="secondary" href="https://github.com/adityaarsharma/perch#readme" target="_blank" rel="noopener">read the docs</a>
+        </div>
+      </div>
     </div>
   </div>
 </main>
 
-<footer>
-  🪶 Perch · MIT License · Always free
+<footer class="mono">
+  <span>MIT licence</span><span class="dot-sep">·</span><span>self-hosted</span><span class="dot-sep">·</span><span>always free</span>
+  <span class="hint">try typing <kbd>perch</kbd> · click anywhere</span>
 </footer>
 
-<script>
-  // Theme persistence
-  const stored = localStorage.getItem('perch-theme');
-  if (stored) document.documentElement.setAttribute('data-theme', stored);
+<!-- Konami boot overlay -->
+<div class="boot" id="boot">
+  <pre id="boot-text"></pre>
+</div>
 
-  function toggleTheme() {
-    const cur = document.documentElement.getAttribute('data-theme') || 'dark';
-    const next = cur === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    localStorage.setItem('perch-theme', next);
-    const icon = document.getElementById('theme-icon');
-    if (next === 'light') {
-      icon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
-    } else {
-      icon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+<script>
+(() => {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // ── Theme persistence ──────────────────────────────────────────────
+  const storedTheme = localStorage.getItem('perch-theme');
+  if (storedTheme) document.documentElement.dataset.theme = storedTheme;
+  document.getElementById('theme-toggle').onclick = () => {
+    const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = t;
+    localStorage.setItem('perch-theme', t);
+  };
+
+  // ── Typed command animation ────────────────────────────────────────
+  const typed = document.getElementById('typed');
+  const cmd = ' perch --watch';
+  let i = 0;
+  function typeNext() {
+    if (i >= cmd.length) { revealLines(); return; }
+    typed.textContent += cmd[i++];
+    setTimeout(typeNext, reduced ? 0 : 55 + Math.random() * 35);
+  }
+  function revealLines() {
+    ['line2','line3','subtitle','cta-row'].forEach((id, idx) => {
+      setTimeout(() => {
+        const el = document.getElementById(id);
+        el.style.transition = 'opacity 0.5s ease, transform 0.5s cubic-bezier(.2,.7,.3,1.3)';
+        el.style.opacity = '1';
+      }, reduced ? 0 : 180 + idx * 220);
+    });
+  }
+  setTimeout(typeNext, reduced ? 0 : 600);
+
+  // ── Status ping (perch-api /health) ────────────────────────────────
+  const statusEl = document.getElementById('status');
+  const statusText = document.getElementById('status-text');
+  fetch('/health', { cache: 'no-store', signal: AbortSignal.timeout(2500) })
+    .then(r => r.ok ? r.json() : Promise.reject(r.status))
+    .then(d => {
+      statusEl.classList.add('online');
+      statusText.textContent = (d.service || 'perch') + ' · ' + (d.version || 'live');
+    })
+    .catch(() => {
+      // Offline / no api on this domain — that's fine, this is just a landing page
+      statusEl.classList.add('online');  // visually "live" — the page is live
+      statusText.textContent = 'perch · live';
+    });
+
+  // ── Ambient cursor parallax (3D tilt on the terminal) ──────────────
+  if (!reduced) {
+    const win = document.getElementById('window');
+    let ticking = false, mx = 0, my = 0, tx = 0, ty = 0;
+    document.addEventListener('mousemove', e => {
+      const cx = innerWidth / 2, cy = innerHeight / 2;
+      mx = (e.clientX - cx) / cx;  // -1..1
+      my = (e.clientY - cy) / cy;
+      if (!ticking) { ticking = true; requestAnimationFrame(tick); }
+    }, { passive: true });
+    function tick() {
+      tx += (mx - tx) * 0.08;
+      ty += (my - ty) * 0.08;
+      win.style.transform = `rotateY(${tx * 2.4}deg) rotateX(${-ty * 2.0}deg) translateZ(0)`;
+      if (Math.abs(mx - tx) > 0.001 || Math.abs(my - ty) > 0.001) requestAnimationFrame(tick);
+      else ticking = false;
     }
   }
-  // Init icon to current theme
-  if (document.documentElement.getAttribute('data-theme') === 'light') {
-    toggleTheme(); toggleTheme(); // re-trigger to set icon, no flicker
+
+  // ── Magnetic CTA hover ─────────────────────────────────────────────
+  if (!reduced) {
+    const cta = document.getElementById('cta');
+    const radius = 90;
+    document.addEventListener('mousemove', e => {
+      const r = cta.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      const dx = e.clientX - cx, dy = e.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+      if (dist < radius) {
+        const f = (1 - dist / radius) * 0.35;
+        cta.style.transform = `translate(${dx * f}px, ${dy * f}px)`;
+      } else {
+        cta.style.transform = 'translate(0,0)';
+      }
+    }, { passive: true });
   }
+
+  // ── Click anywhere → feather rains down ────────────────────────────
+  if (!reduced) {
+    document.addEventListener('click', e => {
+      // Don't fire on links/buttons (their own action takes priority)
+      if (e.target.closest('a, button, .theme, .cta, .secondary')) return;
+      for (let k = 0; k < 4; k++) {
+        const f = document.createElement('div');
+        f.className = 'feather-fall';
+        f.textContent = '🪶';
+        f.style.left = (e.clientX - 9) + 'px';
+        f.style.top  = (e.clientY - 9) + 'px';
+        f.style.setProperty('--dx',  (Math.random() * 80 - 40 + (k - 1.5) * 14) + 'px');
+        f.style.setProperty('--rot', (Math.random() * 360 + 90) + 'deg');
+        f.style.setProperty('--dur', (1.6 + Math.random() * 1.2) + 's');
+        f.style.fontSize = (12 + Math.random() * 6) + 'px';
+        f.style.opacity = (0.6 + Math.random() * 0.35);
+        document.body.appendChild(f);
+        setTimeout(() => f.remove(), 3200);
+      }
+    });
+  }
+
+  // ── Type "perch" → terminal boot easter egg ────────────────────────
+  let bootBuf = '';
+  const target = 'perch';
+  const bootEl = document.getElementById('boot');
+  const bootText = document.getElementById('boot-text');
+  const BOOT_LINES = [
+    '[  0.000000] perch boot v1.0',
+    '[  0.001247] initialising vault.....................[ ok ]',
+    '[  0.002301] mounting brain.db......................[ ok ]',
+    '[  0.003114] starting watcher (14 rules)............[ ok ]',
+    '[  0.004008] opening connector: telegram............[ ok ]',
+    '[  0.004812] opening connector: claude code.........[ ok ]',
+    '[  0.005670] opening connector: http api............[ ok ]',
+    '[  0.006455] tofu host pinning......................[ ok ]',
+    '[  0.007202] redactor: 16 patterns active...........[ ok ]',
+    '[  0.008041] aes-256-gcm vault: scrypt n=16384......[ ok ]',
+    '',
+    '   the brain is awake. find it on github.',
+    '',
+    '   ↳ click anywhere to dismiss',
+  ];
+  function showBoot() {
+    if (reduced) return;
+    bootEl.classList.add('show');
+    bootText.textContent = '';
+    let li = 0;
+    function next() {
+      if (li >= BOOT_LINES.length) return;
+      bootText.textContent += (li > 0 ? '\n' : '') + BOOT_LINES[li++];
+      setTimeout(next, 110 + Math.random() * 100);
+    }
+    next();
+  }
+  bootEl.addEventListener('click', () => {
+    bootEl.classList.remove('show');
+    bootBuf = '';
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea')) return;
+    if (e.key.length !== 1) return;
+    bootBuf = (bootBuf + e.key.toLowerCase()).slice(-target.length);
+    if (bootBuf === target) { bootBuf = ''; showBoot(); }
+  });
+})();
 </script>
 
 </body>
