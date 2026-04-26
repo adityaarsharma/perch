@@ -5,14 +5,18 @@
  * Perch needs to store. Master key sourced from PERCH_MASTER_KEY env var.
  *
  * Threat model:
- * - Disk theft / image leak → vault.json contents are encrypted, useless without master key
+ * - Disk theft / image leak → vault.json + master key both needed; key file is mode 0600
+ *   in a separate location from vault.json (.env vs vault.json), and the KDF (scrypt)
+ *   adds a work factor so even a leaked vault file can't be brute-forced quickly offline
  * - Compromised SQLite brain.db → no credentials live in brain.db, only metadata
  * - Memory dump while running → out of scope (any in-memory secret tool has this)
  *
- * NOT a substitute for proper secret management at scale. For solo / agency use.
+ * KDF: scrypt with per-vault salt (N=2^14, r=8, p=1, derive 32 bytes)
+ * Backward compat: blob.v=1 (SHA-256 derivation) is still readable. New writes use v=2.
+ * Migration: any vault op that touches a v=1 blob auto-upgrades it to v=2 on next write.
  */
 
-import { createCipheriv, createDecipheriv, randomBytes, createHash } from "crypto";
+import { createCipheriv, createDecipheriv, randomBytes, createHash, scryptSync } from "crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, copyFileSync, openSync, fsyncSync, closeSync } from "fs";
 import { homedir } from "os";
 import { dirname, join } from "path";
@@ -22,29 +26,36 @@ const IV_LEN = 12;        // GCM standard
 const TAG_LEN = 16;       // GCM auth tag
 const KEY_LEN = 32;       // 256 bits
 
+// scrypt parameters — chosen so derivation takes ~50-100ms on a typical VPS.
+// N must be power of 2. Doubling N doubles work; we're at 16384.
+const SCRYPT_N = 16384;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_MAXMEM = 64 * 1024 * 1024; // 64MB cap
+
 export interface VaultEntry {
-  id: string;             // human-readable key, e.g. "ssh:production-1" or "runcloud:apikey"
-  value: string;          // the secret
+  id: string;
+  value: string;
   label?: string;
   created_at: number;
   updated_at: number;
 }
 
-interface EncryptedBlob {
-  v: 1;                   // schema version
-  iv: string;             // base64
-  tag: string;            // base64
-  ct: string;             // base64 ciphertext
-}
+// v1: SHA-256(master_key) → key  (legacy, still decryptable)
+// v2: scrypt(master_key, vault_salt) → key  (current)
+type EncryptedBlob =
+  | { v: 1; iv: string; tag: string; ct: string }
+  | { v: 2; iv: string; tag: string; ct: string };
 
 interface VaultFile {
   schema: 1;
-  entries: Record<string, EncryptedBlob>;  // id → encrypted blob
+  salt?: string;          // base64, set on first v2 write; missing on legacy files (assume v1)
+  entries: Record<string, EncryptedBlob>;
 }
 
-// ─── Master key handling ─────────────────────────────────────────────────────
+// ─── Key derivation (v1 legacy + v2 scrypt) ─────────────────────────────────
 
-function deriveKey(): Buffer {
+function getMasterKey(): string {
   const masterKey = process.env.PERCH_MASTER_KEY;
   if (!masterKey) {
     throw new Error(
@@ -55,29 +66,57 @@ function deriveKey(): Buffer {
   if (masterKey.length < 16) {
     throw new Error("PERCH_MASTER_KEY must be at least 16 characters.");
   }
-  // Derive 32-byte key from master via SHA-256
+  return masterKey;
+}
+
+// v1 — legacy, no salt, fast. Kept only for backward compatibility on read.
+function deriveKeyV1(masterKey: string): Buffer {
   return createHash("sha256").update(masterKey).digest();
+}
+
+// v2 — scrypt with per-vault salt. The salt lives in vault.json (`salt` field).
+// Cached because scrypt is intentionally slow (~50-100ms) and we may decrypt
+// many entries per process lifetime.
+let cachedScryptKey: { masterKey: string; salt: string; key: Buffer } | null = null;
+function deriveKeyV2(masterKey: string, saltB64: string): Buffer {
+  if (cachedScryptKey && cachedScryptKey.masterKey === masterKey && cachedScryptKey.salt === saltB64) {
+    return cachedScryptKey.key;
+  }
+  const salt = Buffer.from(saltB64, "base64");
+  const key = scryptSync(masterKey, salt, KEY_LEN, {
+    N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: SCRYPT_MAXMEM,
+  });
+  cachedScryptKey = { masterKey, salt: saltB64, key };
+  return key;
 }
 
 // ─── Encrypt / Decrypt primitives ────────────────────────────────────────────
 
-function encrypt(plaintext: string): EncryptedBlob {
-  const key = deriveKey();
+function encrypt(plaintext: string, saltB64: string): EncryptedBlob {
+  const key = deriveKeyV2(getMasterKey(), saltB64);
   const iv = randomBytes(IV_LEN);
   const cipher = createCipheriv(ALGO, key, iv);
   const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
   const tag = cipher.getAuthTag();
   return {
-    v: 1,
+    v: 2,
     iv: iv.toString("base64"),
     tag: tag.toString("base64"),
     ct: ct.toString("base64"),
   };
 }
 
-function decrypt(blob: EncryptedBlob): string {
-  if (blob.v !== 1) throw new Error(`Unsupported vault schema version: ${blob.v}`);
-  const key = deriveKey();
+function decrypt(blob: EncryptedBlob, saltB64: string | undefined): string {
+  const masterKey = getMasterKey();
+  let key: Buffer;
+  if (blob.v === 1) {
+    key = deriveKeyV1(masterKey);
+  } else if (blob.v === 2) {
+    if (!saltB64) throw new Error("vault has v=2 entries but no salt — file is corrupt");
+    key = deriveKeyV2(masterKey, saltB64);
+  } else {
+    throw new Error(`Unsupported vault entry version: ${(blob as { v: number }).v}`);
+  }
   const iv = Buffer.from(blob.iv, "base64");
   const tag = Buffer.from(blob.tag, "base64");
   const ct = Buffer.from(blob.ct, "base64");
@@ -106,6 +145,18 @@ function loadVault(): VaultFile {
   return parsed;
 }
 
+/**
+ * Get or generate the per-vault salt for v2 (scrypt) KDF.
+ * Returns the existing salt if vault has v=2 entries; generates and persists
+ * a new one if this is a fresh vault or only had v=1 entries.
+ */
+function getOrCreateSalt(v: VaultFile): string {
+  if (v.salt) return v.salt;
+  const salt = randomBytes(16).toString("base64");
+  v.salt = salt;
+  return salt;
+}
+
 function saveVault(v: VaultFile): void {
   const path = vaultPath();
   const dir = dirname(path);
@@ -125,18 +176,24 @@ function saveVault(v: VaultFile): void {
 export function vaultPut(id: string, value: string, label?: string): void {
   if (!id || !value) throw new Error("vaultPut: id and value are required");
   const v = loadVault();
-  v.entries[id] = encrypt(value);
+  const salt = getOrCreateSalt(v);
+  v.entries[id] = encrypt(value, salt);
   saveVault(v);
-  // Note: label and timestamps stored separately as plain metadata if needed.
-  // Keeping vault.json minimal — just encrypted blobs by ID.
-  void label; // suppress unused warning, label is for future metadata file
+  void label; // future metadata file
 }
 
 export function vaultGet(id: string): string | null {
   const v = loadVault();
   const blob = v.entries[id];
   if (!blob) return null;
-  return decrypt(blob);
+  const plaintext = decrypt(blob, v.salt);
+  // Auto-upgrade v=1 (legacy SHA-256) to v=2 (scrypt) on read
+  if (blob.v === 1) {
+    const salt = getOrCreateSalt(v);
+    v.entries[id] = encrypt(plaintext, salt);
+    saveVault(v);
+  }
+  return plaintext;
 }
 
 export function vaultDelete(id: string): boolean {
@@ -162,32 +219,50 @@ export function vaultExists(): boolean {
  * Pass the OLD key as oldMasterKey, then set process.env.PERCH_MASTER_KEY to the new value
  * before calling this function.
  */
-export function vaultRotate(oldMasterKey: string): { rotated: number } {
+export function vaultRotate(oldMasterKey: string): { rotated: number; upgraded_v1_to_v2: number } {
   // SECURITY [C3]: atomic rotation with backup + plaintext zeroing.
-  const oldKey = createHash("sha256").update(oldMasterKey).digest();
+  // Also auto-upgrades any remaining v=1 (legacy SHA-256) entries to v=2 (scrypt).
   const path = vaultPath();
-  // 1. Back up the existing vault before any mutation.
   if (existsSync(path)) {
     copyFileSync(path, path + ".bak");
   }
-  // 2. Decrypt all entries into ephemeral buffers; collect re-encrypted blobs.
   const v = loadVault();
+  const oldSalt = v.salt; // may be undefined if file was pure-v1
+
+  // Generate a NEW salt for the rotated file (forces all entries to re-derive)
+  const newSalt = randomBytes(16).toString("base64");
+
   const newEntries: Record<string, EncryptedBlob> = {};
   let rotated = 0;
+  let upgraded = 0;
+
   for (const [id, blob] of Object.entries(v.entries)) {
+    // Decrypt with the OLD master key (and old salt if v=2)
+    let key: Buffer;
+    if (blob.v === 1) {
+      key = deriveKeyV1(oldMasterKey);
+    } else {
+      if (!oldSalt) throw new Error("vault has v=2 entries but no salt — corrupt");
+      key = deriveKeyV2(oldMasterKey, oldSalt);
+    }
     const iv = Buffer.from(blob.iv, "base64");
     const tag = Buffer.from(blob.tag, "base64");
     const ct = Buffer.from(blob.ct, "base64");
-    const decipher = createDecipheriv(ALGO, oldKey, iv);
+    const decipher = createDecipheriv(ALGO, key, iv);
     decipher.setAuthTag(tag);
     const ptBuf = Buffer.concat([decipher.update(ct), decipher.final()]);
     const pt = ptBuf.toString("utf8");
-    newEntries[id] = encrypt(pt);
-    // Zero plaintext buffers so GC can't leave secrets in memory unnecessarily.
-    ptBuf.fill(0);
+
+    // Re-encrypt with the NEW master key (cached deriveKeyV2 picks up new env)
+    // Force v=2 output regardless of input version.
+    cachedScryptKey = null;       // bust cache so deriveKeyV2 re-runs with new master key
+    newEntries[id] = encrypt(pt, newSalt);
+    if (blob.v === 1) upgraded++;
     rotated++;
+    // Zero plaintext buffer
+    ptBuf.fill(0);
   }
-  // 3. Atomic swap (saveVault uses tmp+fsync+rename internally).
-  saveVault({ schema: 1, entries: newEntries });
-  return { rotated };
+
+  saveVault({ schema: 1, salt: newSalt, entries: newEntries });
+  return { rotated, upgraded_v1_to_v2: upgraded };
 }

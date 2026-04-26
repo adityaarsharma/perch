@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
 <title>Perch — The intelligence layer for your servers</title>
 <meta name="description" content="An AI-native, self-hosted, self-learning brain that watches your servers, diagnoses what breaks in plain English, and lives wherever you want — Claude Code, Telegram, Slack, anywhere that speaks HTTP." />
-<meta name="theme-color" content="#0a0e16" />
+<meta name="theme-color" content="#0a0e16" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#fafbfc" media="(prefers-color-scheme: light)" />
 <link rel="canonical" href="https://perch.adityaarsharma.com/" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%AA%B6%3C/text%3E%3C/svg%3E" />
 
@@ -71,7 +72,7 @@ section .lede{color:var(--muted);max-width:680px;margin:0 0 48px;font-size:17px}
 .hero::before{content:"";position:absolute;inset:0;background:var(--gradient);pointer-events:none;z-index:0}
 .hero::after{content:"";position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,var(--border-2) 1px,transparent 0);background-size:36px 36px;opacity:.35;mask-image:radial-gradient(60% 50% at 50% 30%,#000 30%,transparent 70%);-webkit-mask-image:radial-gradient(60% 50% at 50% 30%,#000 30%,transparent 70%);pointer-events:none;animation:drift 40s linear infinite;z-index:0}
 @keyframes drift{from{background-position:0 0}to{background-position:360px 360px}}
-.hero-inner{position:relative;z-index:1;max-width:820px}
+.hero-inner{position:relative;z-index:1;max-width:820px;width:100%}
 .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--border);border-radius:999px;font-size:12px;color:var(--muted);background:var(--surface);margin-bottom:24px}
 .eyebrow .dot{width:6px;height:6px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 10px var(--accent-2)}
 .h1{font-size:clamp(36px,6vw,64px);line-height:1.05;letter-spacing:-.03em;font-weight:700;margin:0 0 20px;min-height:1.1em}
@@ -79,15 +80,37 @@ section .lede{color:var(--muted);max-width:680px;margin:0 0 48px;font-size:17px}
 .rotator span{position:absolute;left:0;top:0;opacity:0;transition:opacity .6s ease;background:linear-gradient(120deg,var(--text) 30%,var(--accent) 80%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 .rotator span.is-active{opacity:1;position:relative}
 .sub{font-size:18px;color:var(--muted);max-width:660px;margin:0 0 32px}
-.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:36px}
-.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;font-weight:600;font-size:15px;border:1px solid transparent;cursor:pointer;transition:.18s ease}
+.cta-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:24px}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:12px 20px;border-radius:12px;font-weight:600;font-size:15px;border:1px solid transparent;cursor:pointer;transition:.18s ease;text-decoration:none}
 .btn-primary{background:var(--accent);color:#03131e}
 [data-theme="light"] .btn-primary{color:#fff}
 .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);text-decoration:none}
 .btn-ghost{background:transparent;color:var(--text);border-color:var(--border-2)}
 .btn-ghost:hover{background:var(--surface);text-decoration:none}
-.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
 .chip{font-size:13px;padding:6px 12px;border-radius:999px;background:var(--surface);border:1px solid var(--border);color:var(--muted)}
+
+/* live api ping */
+.api-ping{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--border);border-radius:999px;background:var(--surface);font-size:12px;color:var(--muted);font-family:'JetBrains Mono',ui-monospace,monospace;opacity:0;transition:opacity .6s ease}
+.api-ping.is-live{opacity:1}
+.api-ping .pulse{width:8px;height:8px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 0 0 var(--accent-2);animation:pulseDot 2s ease-out infinite}
+@keyframes pulseDot{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent-2) 60%,transparent)}70%{box-shadow:0 0 0 10px transparent}100%{box-shadow:0 0 0 0 transparent}}
+
+/* terminal */
+.terminal{margin-top:36px;background:#05080d;border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:var(--shadow);font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;line-height:1.7;color:#cbd5e1}
+[data-theme="light"] .terminal{background:#0b1120}
+.term-bar{display:flex;align-items:center;gap:6px;padding:10px 14px;background:rgba(255,255,255,0.04);border-bottom:1px solid var(--border)}
+.term-bar .tdot{width:10px;height:10px;border-radius:50%;background:#475569}
+.term-bar .tdot.r{background:#f87171}.term-bar .tdot.y{background:#fbbf24}.term-bar .tdot.g{background:#4ade80}
+.term-bar .tlabel{margin-left:10px;color:#64748b;font-size:11px;letter-spacing:.04em}
+.term-body{padding:18px 18px 22px;min-height:240px;white-space:pre-wrap;word-break:break-word}
+.term-body .pp{color:#7dd3fc}
+.term-body .ok{color:#86efac}
+.term-body .warn{color:#fbbf24}
+.term-body .err{color:#f87171}
+.term-body .dim{color:#64748b}
+.term-cursor{display:inline-block;width:8px;height:1em;background:#7dd3fc;vertical-align:-2px;margin-left:2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
 
 /* cards grid */
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
@@ -98,20 +121,42 @@ section .lede{color:var(--muted);max-width:680px;margin:0 0 48px;font-size:17px}
 .card p{margin:0;color:var(--muted);font-size:15px}
 .card .tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
 
+/* playground */
+.play{display:grid;grid-template-columns:240px 1fr;gap:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:18px}
+@media(max-width:780px){.play{grid-template-columns:1fr}}
+.play-list{display:flex;flex-direction:column;gap:6px}
+.play-cmd{text-align:left;padding:10px 14px;border-radius:10px;background:transparent;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:13px;transition:.15s ease}
+.play-cmd:hover{color:var(--text);border-color:var(--border-2)}
+.play-cmd[aria-selected="true"]{background:var(--surface-2);color:var(--text);border-color:var(--accent)}
+.play-cmd .pcd{display:block;font-size:11px;color:var(--muted);margin-top:2px;font-family:'Inter',sans-serif}
+.play-cmd[aria-selected="true"] .pcd{color:var(--muted)}
+.play-out{background:#05080d;border-radius:10px;padding:16px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:12.5px;line-height:1.65;color:#cbd5e1;overflow-x:auto;min-height:240px;white-space:pre}
+[data-theme="light"] .play-out{background:#0b1120}
+.play-out .k{color:#7dd3fc}.play-out .s{color:#86efac}.play-out .n{color:#fbbf24}.play-out .b{color:#c4b5fd}
+
 /* compare */
+.compare-grid{display:grid;grid-template-columns:1fr 320px;gap:20px}
+@media(max-width:980px){.compare-grid{grid-template-columns:1fr}}
 .compare-wrap{border:1px solid var(--border);border-radius:16px;background:var(--surface);overflow:hidden}
 .compare-scroll{overflow-x:auto}
 table.compare{width:100%;border-collapse:collapse;min-width:780px;font-size:14px}
 table.compare th,table.compare td{padding:14px 12px;text-align:center;border-bottom:1px solid var(--border)}
 table.compare th{font-weight:600;color:var(--muted);background:var(--surface-2);position:sticky;top:0;font-size:12px;letter-spacing:.04em;text-transform:uppercase}
-table.compare th:first-child,table.compare td:first-child{text-align:left;font-weight:500}
+table.compare th:first-child,table.compare td:first-child{text-align:left;font-weight:500;cursor:pointer}
 table.compare tr:last-child td{border-bottom:0}
-table.compare tbody tr:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+table.compare tbody tr{transition:background .15s ease;cursor:pointer}
+table.compare tbody tr:hover,table.compare tbody tr.is-active{background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .col-perch{background:color-mix(in srgb,var(--accent-2) 8%,transparent);color:var(--text);font-weight:600;position:relative}
 .col-perch.head{color:var(--accent-2)}
 .yes{color:var(--accent-2)}
 .no{color:#ef4444;opacity:.7}
 .partial{color:#fbbf24}
+.feat-panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:22px;position:sticky;top:80px;align-self:start;min-height:200px}
+.feat-panel .label{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+.feat-panel h4{margin:0 0 8px;font-size:18px;letter-spacing:-.01em}
+.feat-panel p{margin:0;color:var(--muted);font-size:14px}
+.feat-panel .cta{margin-top:14px}
+.compare-cta{margin-top:24px;text-align:center}
 
 /* how it works */
 .flow{display:grid;gap:18px}
@@ -143,17 +188,24 @@ table.compare tbody tr:hover{background:color-mix(in srgb,var(--accent) 6%,trans
 .copy-btn:hover{color:var(--text)}
 .tab-panel{display:none}
 .tab-panel.is-active{display:block}
+.install-cta{margin-top:24px;display:flex;gap:12px;flex-wrap:wrap}
 
 /* roadmap */
 .timeline{position:relative;padding-left:28px}
 .timeline::before{content:"";position:absolute;left:9px;top:8px;bottom:8px;width:2px;background:var(--border-2)}
 .tl-item{position:relative;padding:0 0 28px 0}
 .tl-item:last-child{padding-bottom:0}
-.tl-item::before{content:"";position:absolute;left:-24px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--accent)}
+.tl-item::before{content:"";position:absolute;left:-24px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--accent);transition:box-shadow .4s ease,background .4s ease}
 .tl-item.done::before{background:var(--accent-2);border-color:var(--accent-2)}
-.tl-item h4{margin:0 0 8px;font-size:16px}
+.tl-item.done.is-pulsed::before{animation:doneRing 1.6s ease-out 1}
+@keyframes doneRing{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--accent-2) 70%,transparent)}100%{box-shadow:0 0 0 14px transparent}}
+.tl-item h4{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tl-item .badge{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:999px}
+.tl-item .badge.shipped{background:color-mix(in srgb,var(--accent-2) 18%,transparent);color:var(--accent-2)}
+.tl-item .badge.soon{background:color-mix(in srgb,var(--accent) 18%,transparent);color:var(--accent)}
 .tl-item ul{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:15px}
 .tl-item ul li{margin:4px 0}
+.tl-item ul li.shipped::marker{color:var(--accent-2)}
 
 /* author */
 .author{display:grid;grid-template-columns:120px 1fr;gap:24px;align-items:start}
@@ -168,6 +220,23 @@ table.compare tbody tr:hover{background:color-mix(in srgb,var(--accent) 6%,trans
 .other-products .chip{background:var(--surface-2)}
 @media(max-width:680px){.author{grid-template-columns:1fr}.avatar{width:96px;height:96px;font-size:34px}}
 
+/* sticky star */
+.sticky-star{position:fixed;right:20px;bottom:20px;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border-2);border-radius:999px;color:var(--text);font-weight:600;font-size:14px;box-shadow:var(--shadow);text-decoration:none;z-index:60;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .3s ease,transform .3s ease,border-color .15s ease}
+.sticky-star.is-visible{opacity:1;transform:none;pointer-events:auto}
+.sticky-star:hover{border-color:var(--accent);text-decoration:none}
+.sticky-star .star-ic{color:#fbbf24}
+.sticky-star .count{color:var(--muted);font-weight:500;font-variant-numeric:tabular-nums}
+
+/* feather easter egg */
+.feather-fly{position:fixed;left:-60px;top:30%;font-size:32px;pointer-events:none;z-index:70;animation:flyAcross 4s cubic-bezier(.4,0,.6,1) forwards}
+@keyframes flyAcross{
+  0%{left:-60px;transform:translateY(0) rotate(0deg)}
+  25%{transform:translateY(-40px) rotate(15deg)}
+  50%{transform:translateY(20px) rotate(-10deg)}
+  75%{transform:translateY(-20px) rotate(10deg)}
+  100%{left:calc(100% + 60px);transform:translateY(40px) rotate(20deg)}
+}
+
 /* footer */
 footer{border-top:1px solid var(--border);padding:48px 0 36px;margin-top:48px}
 .foot{display:flex;justify-content:space-between;align-items:center;gap:24px;flex-wrap:wrap;font-size:14px}
@@ -176,7 +245,10 @@ footer{border-top:1px solid var(--border);padding:48px 0 36px;margin-top:48px}
 .foot-c a:hover{color:var(--text)}
 .foot .star{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-weight:500}
 .foot .star:hover{border-color:var(--border-2);text-decoration:none}
-.built{margin-top:24px;text-align:center;color:var(--muted);font-size:13px}
+.built{margin-top:24px;text-align:center;color:var(--muted);font-size:13px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.built a{color:var(--muted);transition:color .15s ease}
+.built a:hover{color:var(--accent)}
+.made-by{display:inline-flex;align-items:center;gap:6px}
 
 /* fade in */
 .reveal{opacity:0;transform:translateY(16px);transition:opacity .7s ease,transform .7s ease}
@@ -186,6 +258,10 @@ footer{border-top:1px solid var(--border);padding:48px 0 36px;margin-top:48px}
   .rotator span{transition:none}
   .connector .pipe{animation:none}
   .hero::after{animation:none}
+  .api-ping .pulse{animation:none}
+  .term-cursor{animation:none}
+  .tl-item.done.is-pulsed::before{animation:none}
+  .feather-fly{display:none}
   html{scroll-behavior:auto}
 }
 ::selection{background:color-mix(in srgb,var(--accent) 30%,transparent);color:var(--text)}
@@ -198,7 +274,7 @@ footer{border-top:1px solid var(--border);padding:48px 0 36px;margin-top:48px}
     <a class="brand" href="#top"><span class="brand-mark">🪶</span> Perch</a>
     <nav class="nav-links" aria-label="Primary">
       <a href="#vision">Vision</a>
-      <a href="#how">Docs</a>
+      <a href="#playground">Playground</a>
       <a href="#compare">Compare</a>
       <a href="#install">Install</a>
     </nav>
@@ -230,14 +306,23 @@ footer{border-top:1px solid var(--border);padding:48px 0 36px;margin-top:48px}
     </span></h1>
     <p class="sub">An AI-native, self-hosted brain that watches every server you run, diagnoses what breaks in plain English, and lives wherever you want — Claude Code, Telegram, Slack, your terminal, anywhere that speaks HTTP.</p>
     <div class="cta-row">
-      <a class="btn btn-primary" href="#install">Install Perch →</a>
-      <a class="btn btn-ghost" href="https://github.com/adityaarsharma/perch" rel="noopener">View on GitHub</a>
+      <a class="btn btn-primary" href="https://github.com/adityaarsharma/perch#install-in-5-minutes" rel="noopener">Install Perch →</a>
+      <a class="btn btn-ghost" href="https://github.com/adityaarsharma/perch/tree/main/docs" rel="noopener">Read the docs</a>
     </div>
     <div class="chips">
       <span class="chip">150+ MCP tools</span>
       <span class="chip">7 WordPress modules</span>
       <span class="chip">AES-256-GCM vault</span>
       <span class="chip">$0 forever</span>
+    </div>
+    <span class="api-ping" id="api-ping" aria-live="polite">
+      <span class="pulse"></span>
+      <span id="api-ping-text">🪶 perch-api · checking…</span>
+    </span>
+
+    <div class="terminal" id="terminal" aria-label="Demo terminal">
+      <div class="term-bar"><span class="tdot r"></span><span class="tdot y"></span><span class="tdot g"></span><span class="tlabel">perch — claude code · ~/sites</span></div>
+      <div class="term-body" id="term-body"><span class="term-cursor"></span></div>
     </div>
   </div>
 </section>
@@ -267,42 +352,69 @@ footer{border-top:1px solid var(--border);padding:48px 0 36px;margin-top:48px}
   </div>
 </section>
 
+<!-- PLAYGROUND -->
+<section id="playground">
+  <div class="container">
+    <h2 class="reveal">Try a tool</h2>
+    <p class="lede reveal">Click a command to see a sample response. No backend, no signup — just a peek at what Perch returns to your AI.</p>
+    <div class="play reveal">
+      <div class="play-list" role="tablist" aria-label="Sample commands">
+        <button class="play-cmd" data-pcmd="db" aria-selected="true" role="tab">wp.db_audit<span class="pcd">Autoload bloat &amp; orphans</span></button>
+        <button class="play-cmd" data-pcmd="errors" aria-selected="false" role="tab">wp.errors<span class="pcd">Classify &amp; blame</span></button>
+        <button class="play-cmd" data-pcmd="security" aria-selected="false" role="tab">wp.security<span class="pcd">12-check hardening</span></button>
+        <button class="play-cmd" data-pcmd="brain" aria-selected="false" role="tab">brain.recall<span class="pcd">Self-learning history</span></button>
+      </div>
+      <pre class="play-out" id="play-out" role="tabpanel" aria-live="polite"></pre>
+    </div>
+  </div>
+</section>
+
 <!-- COMPARE -->
 <section id="compare">
   <div class="container">
     <h2 class="reveal">What no one else is shipping</h2>
-    <p class="lede reveal">Real numbers, real costs. The whole hosting market in one row.</p>
-    <div class="compare-wrap reveal">
-      <div class="compare-scroll">
-        <table class="compare">
-          <thead>
-            <tr>
-              <th></th>
-              <th>GoDaddy</th>
-              <th>Cloudways</th>
-              <th>Kinsta</th>
-              <th>SiteGround</th>
-              <th>RunCloud</th>
-              <th class="col-perch head">+ Perch</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td>Provider freedom</td><td class="no">✕</td><td class="partial">Limited</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>Root access</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>Run any stack (WP+Node+n8n)</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>AI-native (Claude Code)</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>Self-learning brain</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>Plain-English diagnosis</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>WP deep-audit (DB, plugins, CVE)</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="yes">✓</td><td class="partial">Partial</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>Auto-fix safe issues</td><td class="partial">Limited</td><td class="partial">Limited</td><td class="yes">✓</td><td class="partial">Limited</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
-            <tr><td>Multi-channel alerts</td><td class="no">✕</td><td class="partial">Email</td><td class="partial">Email</td><td class="partial">Email</td><td class="partial">Email</td><td class="col-perch yes">Telegram · Slack · HTTP</td></tr>
-            <tr><td>Cost (1 site)</td><td>$7.99</td><td>$14</td><td>$35</td><td>$2.99</td><td>$13</td><td class="col-perch">$13</td></tr>
-            <tr><td>Cost (10 sites)</td><td>$80+</td><td>$140+</td><td>$350+</td><td>Upgrade</td><td>$13</td><td class="col-perch">$13</td></tr>
-            <tr><td>Cost (50 sites)</td><td>—</td><td>$700+</td><td>$1,750+</td><td>—</td><td>$25</td><td class="col-perch">$25</td></tr>
-            <tr><td>Owns your data</td><td class="no">They do</td><td class="no">They do</td><td class="no">They do</td><td class="no">They do</td><td class="yes">You</td><td class="col-perch yes">You</td></tr>
-          </tbody>
-        </table>
+    <p class="lede reveal">Real numbers, real costs. Hover or tap any row for the why.</p>
+    <div class="compare-grid reveal">
+      <div class="compare-wrap">
+        <div class="compare-scroll">
+          <table class="compare" id="cmp-table">
+            <thead>
+              <tr>
+                <th></th>
+                <th>GoDaddy</th>
+                <th>Cloudways</th>
+                <th>Kinsta</th>
+                <th>SiteGround</th>
+                <th>RunCloud</th>
+                <th class="col-perch head">+ Perch</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr data-feat="freedom"><td>Provider freedom</td><td class="no">✕</td><td class="partial">Limited</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="root"><td>Root access</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="stack"><td>Run any stack (WP+Node+n8n)</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="yes">✓</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="ai"><td>AI-native (Claude Code)</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="brain"><td>Self-learning brain</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="diagnosis"><td>Plain-English diagnosis</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="wp"><td>WP deep-audit (DB, plugins, CVE)</td><td class="partial">Partial</td><td class="partial">Partial</td><td class="yes">✓</td><td class="partial">Partial</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="autofix"><td>Auto-fix safe issues</td><td class="partial">Limited</td><td class="partial">Limited</td><td class="yes">✓</td><td class="partial">Limited</td><td class="no">✕</td><td class="col-perch yes">✓</td></tr>
+              <tr data-feat="alerts"><td>Multi-channel alerts</td><td class="no">✕</td><td class="partial">Email</td><td class="partial">Email</td><td class="partial">Email</td><td class="partial">Email</td><td class="col-perch yes">Telegram · Slack · HTTP</td></tr>
+              <tr data-feat="cost1"><td>Cost (1 site)</td><td>$7.99</td><td>$14</td><td>$35</td><td>$2.99</td><td>$13</td><td class="col-perch">$13</td></tr>
+              <tr data-feat="cost10"><td>Cost (10 sites)</td><td>$80+</td><td>$140+</td><td>$350+</td><td>Upgrade</td><td>$13</td><td class="col-perch">$13</td></tr>
+              <tr data-feat="cost50"><td>Cost (50 sites)</td><td>—</td><td>$700+</td><td>$1,750+</td><td>—</td><td>$25</td><td class="col-perch">$25</td></tr>
+              <tr data-feat="data"><td>Owns your data</td><td class="no">They do</td><td class="no">They do</td><td class="no">They do</td><td class="no">They do</td><td class="yes">You</td><td class="col-perch yes">You</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
+      <aside class="feat-panel" id="feat-panel" aria-live="polite">
+        <div class="label">Hover a row</div>
+        <h4>The whole hosting market in one row</h4>
+        <p>Every row breaks down what costs you sleep at 4am. Hover any row on desktop, tap on mobile, to see why it matters.</p>
+      </aside>
+    </div>
+    <div class="compare-cta">
+      <a class="btn btn-primary" href="https://github.com/adityaarsharma/perch" rel="noopener">See the full project on GitHub →</a>
     </div>
   </div>
 </section>
@@ -399,6 +511,10 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
 # Same brain, same data, two surfaces.</code></pre>
         </div>
       </div>
+      <div class="install-cta">
+        <a class="btn btn-primary" href="https://github.com/adityaarsharma/perch#install-in-5-minutes" rel="noopener">Install Perch →</a>
+        <a class="btn btn-ghost" href="https://github.com/adityaarsharma/perch/tree/main/docs" rel="noopener">Read the docs</a>
+      </div>
     </div>
   </div>
 </section>
@@ -410,17 +526,17 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
     <p class="lede reveal">Honest about what's shipped, honest about what's next.</p>
     <div class="timeline reveal">
       <div class="tl-item done">
-        <h4>Now — April 2026 · Sprint 1 shipped</h4>
+        <h4>Now — April 2026 · Sprint 1 <span class="badge shipped">Shipped</span></h4>
         <ul>
-          <li>MCP server with 150+ tools</li>
-          <li>WordPress Killer Series — 7 deep modules</li>
-          <li>SQLite self-learning brain</li>
-          <li>Telegram bot with inline buttons + fix-server</li>
-          <li>Slack alert delivery via webhook</li>
+          <li class="shipped">MCP server with 150+ tools</li>
+          <li class="shipped">WordPress Killer Series — 7 deep modules</li>
+          <li class="shipped">SQLite self-learning brain</li>
+          <li class="shipped">Telegram bot with inline buttons + fix-server</li>
+          <li class="shipped">Slack alert delivery via webhook</li>
         </ul>
       </div>
       <div class="tl-item">
-        <h4>Next 60 days</h4>
+        <h4>Next 60 days <span class="badge soon">Soon</span></h4>
         <ul>
           <li>Credential vault (AES-256-GCM)</li>
           <li>Undo system (<code>/perch undo</code>)</li>
@@ -430,7 +546,7 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
         </ul>
       </div>
       <div class="tl-item">
-        <h4>Q3 2026</h4>
+        <h4>Q3 2026 <span class="badge soon">Soon</span></h4>
         <ul>
           <li>Laravel module (queues, schedule, artisan)</li>
           <li>Node.js module (PM2 deep monitoring)</li>
@@ -439,7 +555,7 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
         </ul>
       </div>
       <div class="tl-item">
-        <h4>2027</h4>
+        <h4>2027 <span class="badge soon">Soon</span></h4>
         <ul><li>Cross-server federated learning — opt-in, anonymized.</li></ul>
       </div>
     </div>
@@ -472,26 +588,37 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
 
 </main>
 
+<a class="sticky-star" id="sticky-star" href="https://github.com/adityaarsharma/perch" rel="noopener" aria-label="Star Perch on GitHub">
+  <span class="star-ic">★</span> Star on GitHub
+  <span class="count" id="star-count"></span>
+</a>
+
 <footer>
   <div class="container">
     <div class="foot">
       <div><span class="brand-mark">🪶</span> Perch · MIT License · Always Free</div>
       <nav class="foot-c" aria-label="Footer">
         <a href="#vision">Vision</a>
-        <a href="#how">Docs</a>
+        <a href="https://github.com/adityaarsharma/perch/tree/main/docs" rel="noopener">Docs</a>
         <a href="#install">Install</a>
         <a href="https://github.com/adityaarsharma/perch" rel="noopener">GitHub</a>
       </nav>
       <a class="star" href="https://github.com/adityaarsharma/perch" rel="noopener">★ Star on GitHub</a>
     </div>
-    <div class="built">Built with care in Indore, India.</div>
+    <div class="built">
+      <a class="made-by" href="https://adityaarsharma.com" rel="noopener">🪶 Made by Aditya Sharma</a>
+      <span>Built with care in Indore, India.</span>
+      <a href="https://perch.adityaarsharma.com" style="font-size:12px">Run on perch.adityaarsharma.com</a>
+    </div>
   </div>
 </footer>
 
 <script>
 (function(){
-  // Theme
+  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   var root = document.documentElement;
+
+  // Theme
   var saved = null;
   try { saved = localStorage.getItem('perch-theme'); } catch(e){}
   if (saved) root.setAttribute('data-theme', saved);
@@ -511,7 +638,6 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
 
   // Rotator
   var phrases = document.querySelectorAll('.rotator span');
-  var prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (phrases.length > 1 && !prefersReduced){
     var i = 0;
     setInterval(function(){
@@ -521,7 +647,7 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
     }, 3200);
   }
 
-  // Tabs
+  // Tabs (install)
   var tabs = document.querySelectorAll('.tab');
   tabs.forEach(function(t){
     t.addEventListener('click', function(){
@@ -556,8 +682,9 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
   });
 
   // Reveal
+  var io;
   if ('IntersectionObserver' in window){
-    var io = new IntersectionObserver(function(entries){
+    io = new IntersectionObserver(function(entries){
       entries.forEach(function(e){
         if (e.isIntersecting){ e.target.classList.add('is-visible'); io.unobserve(e.target); }
       });
@@ -566,6 +693,299 @@ cd /opt/perch/telegram-bot &amp;&amp; cp config.example.env .env &amp;&amp; ./se
   } else {
     document.querySelectorAll('.reveal').forEach(function(el){ el.classList.add('is-visible'); });
   }
+
+  // Live API ping
+  (function(){
+    var ping = document.getElementById('api-ping');
+    var pingText = document.getElementById('api-ping-text');
+    if (!ping) return;
+    var ctrl = ('AbortController' in window) ? new AbortController() : null;
+    var to = setTimeout(function(){ if (ctrl) ctrl.abort(); }, 4000);
+    fetch('https://perch.adityaarsharma.com/health', { signal: ctrl ? ctrl.signal : undefined, mode: 'cors' })
+      .then(function(r){ return r.ok ? r.json().catch(function(){return {};}) : Promise.reject(); })
+      .then(function(data){
+        clearTimeout(to);
+        var v = (data && data.version) ? data.version : 'v1.0.0';
+        pingText.textContent = '🪶 perch-api · ' + v + ' · live';
+        ping.classList.add('is-live');
+      })
+      .catch(function(){ clearTimeout(to); /* silent */ });
+  })();
+
+  // Terminal demo
+  (function(){
+    var body = document.getElementById('term-body');
+    var term = document.getElementById('terminal');
+    if (!body || !term) return;
+    var lines = [
+      { t: '$ /perch wp audit mysite.com', cls: 'pp', delay: 24 },
+      { t: '', delay: 200 },
+      { t: '🪶 perched · scanning mysite.com via SSH…', cls: 'dim', delay: 18 },
+      { t: '', delay: 250 },
+      { t: '▸ Database', cls: 'pp', delay: 14 },
+      { t: '  autoload: 8.4 MB  ', cls: '', delay: 10, append: { t: 'high', cls: 'warn' } },
+      { t: '  top key: elementor_remote_info_library (2.1 MB)', cls: 'dim', delay: 10 },
+      { t: '  expired transients: 1,247  ', cls: '', delay: 10, append: { t: 'cleanable', cls: 'ok' } },
+      { t: '', delay: 180 },
+      { t: '▸ Plugins (24 active)', cls: 'pp', delay: 14 },
+      { t: '  contact-form-7 v5.7  ', cls: '', delay: 10, append: { t: 'CVE-2024-2242 · CVSS 8.1', cls: 'err' } },
+      { t: '  wp-rocket v3.15  ', cls: '', delay: 10, append: { t: 'ok', cls: 'ok' } },
+      { t: '', delay: 180 },
+      { t: '▸ Security score: 71 / 100  ', cls: 'pp', delay: 14, append: { t: 'fixable', cls: 'warn' } },
+      { t: '  · admin user is "admin"', cls: 'dim', delay: 8 },
+      { t: '  · XML-RPC enabled', cls: 'dim', delay: 8 },
+      { t: '  · WP version exposed in header', cls: 'dim', delay: 8 },
+      { t: '', delay: 220 },
+      { t: '✓ Audit logged to brain · 3 safe fixes available', cls: 'ok', delay: 14 },
+      { t: '  run /perch wp fix mysite.com --safe-only', cls: 'dim', delay: 10 }
+    ];
+
+    function escapeHtml(s){ return s.replace(/[&<>]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c]; }); }
+
+    function render(allLines){
+      var html = '';
+      allLines.forEach(function(l){
+        var cls = l.cls ? ' class="'+l.cls+'"' : '';
+        html += '<span'+cls+'>'+escapeHtml(l.t)+'</span>';
+        if (l.append){
+          html += ' <span class="'+l.append.cls+'">'+escapeHtml(l.append.t)+'</span>';
+        }
+        html += '\n';
+      });
+      return html;
+    }
+
+    function play(){
+      if (term.dataset.played === '1') return;
+      term.dataset.played = '1';
+      if (prefersReduced){
+        body.innerHTML = render(lines);
+        return;
+      }
+      body.innerHTML = '';
+      var idx = 0;
+      function next(){
+        if (idx >= lines.length){
+          body.insertAdjacentHTML('beforeend', '<span class="term-cursor"></span>');
+          return;
+        }
+        var l = lines[idx++];
+        var cls = l.cls ? ' class="'+l.cls+'"' : '';
+        var html = '<span'+cls+'>'+escapeHtml(l.t)+'</span>';
+        if (l.append){
+          html += ' <span class="'+l.append.cls+'">'+escapeHtml(l.append.t)+'</span>';
+        }
+        html += '\n';
+        body.insertAdjacentHTML('beforeend', html);
+        setTimeout(next, l.delay || 80);
+      }
+      next();
+    }
+
+    if ('IntersectionObserver' in window){
+      var to2 = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if (e.isIntersecting){ play(); to2.unobserve(e.target); }
+        });
+      }, { threshold: 0.25 });
+      to2.observe(term);
+    } else {
+      play();
+    }
+  })();
+
+  // Playground
+  (function(){
+    var samples = {
+      db: {
+        site: 'mysite.com',
+        autoload_mb: 8.4,
+        autoload_status: 'high',
+        top_options: [
+          { key: 'elementor_remote_info_library', size_kb: 2147 },
+          { key: '_transient_jetpack_assumed_site_creation_date', size_kb: 612 },
+          { key: 'wf_lastSeenSiteHealth', size_kb: 410 }
+        ],
+        expired_transients: 1247,
+        orphan_postmeta: 8932,
+        recommended: ['delete_expired_transients', 'reduce_autoload:elementor_remote_info_library']
+      },
+      errors: {
+        site: 'mysite.com',
+        window_h: 24,
+        fatal: 1,
+        notices: 14,
+        top: {
+          message: 'PHP Fatal error: Uncaught Error: Call to undefined function wpcf7_load()',
+          file: 'plugins/my-plugin/inc/forms.php',
+          likely_cause: 'my-plugin v2.4.1 deployed 2h ago — incompatible with cf7 v5.7',
+          one_line_fix: 'wp plugin rollback my-plugin --to=2.4.0'
+        }
+      },
+      security: {
+        site: 'mysite.com',
+        score: 71,
+        max: 100,
+        passing: 9,
+        failing: 3,
+        critical: [
+          { check: 'admin_username', detail: 'admin user is "admin" — predictable', fix: 'rename via UPDATE wp_users' },
+          { check: 'xmlrpc', detail: 'XML-RPC enabled — brute-force vector', fix: 'block /xmlrpc.php in nginx' },
+          { check: 'version_disclosure', detail: 'WP version in meta + headers', fix: 'remove generator hooks' }
+        ]
+      },
+      brain: {
+        query: 'why does mysite.com keep going slow at 9pm?',
+        memories_recalled: 4,
+        pattern: 'TTFB spikes 9–10pm on Tue/Thu correlate with backup-buddy cron',
+        confidence: 0.82,
+        first_seen: '2026-02-14',
+        last_seen: '2026-04-23',
+        suggestion: 'reschedule backup to 3am or move to incremental'
+      }
+    };
+    var out = document.getElementById('play-out');
+    var btns = document.querySelectorAll('.play-cmd');
+    function colorize(json){
+      return json
+        .replace(/("[^"]+":)/g, '<span class="k">$1</span>')
+        .replace(/: ("[^"]*")/g, ': <span class="s">$1</span>')
+        .replace(/: (-?\d+\.?\d*)/g, ': <span class="n">$1</span>')
+        .replace(/: (true|false|null)/g, ': <span class="b">$1</span>');
+    }
+    function show(key){
+      var data = samples[key];
+      if (!data) return;
+      var json = JSON.stringify(data, null, 2);
+      out.innerHTML = colorize(json);
+    }
+    btns.forEach(function(b){
+      b.addEventListener('click', function(){
+        btns.forEach(function(x){ x.setAttribute('aria-selected', x === b ? 'true' : 'false'); });
+        show(b.getAttribute('data-pcmd'));
+      });
+    });
+    show('db');
+  })();
+
+  // Compare row → side panel
+  (function(){
+    var feats = {
+      freedom:  ['Provider freedom',   'Pick any host — Hetzner, DO, AWS, bare metal. Move whenever you want. No lock-in to a panel that owns your DNS.'],
+      root:     ['Root access',        'You own the box. Install Redis, change PHP-FPM pools, debug at the kernel. Managed hosts hide all of this.'],
+      stack:    ['Run any stack',      'WordPress next to Node, n8n, Postgres, anything. One server, many apps. Most managed hosts allow only WP.'],
+      ai:       ['AI-native',          'Built for Claude Code from day one. 150+ MCP tools. Your agent operates servers safely — not bolted-on chat.'],
+      brain:    ['Self-learning brain','Every audit and fix logs to a SQLite brain on your server. Over weeks, Perch learns what is normal for your stack.'],
+      diagnosis:['Plain-English diagnosis','"White screen since 2pm — my-plugin v2.4 deployed at 1:58pm, rollback in one command." That is the output.'],
+      wp:       ['WP deep-audit',      'Autoload bloat, transient cleanup, plugin CVE scan via Wordfence Intel. RunCloud-aware paths, per-app users.'],
+      autofix:  ['Auto-fix safe issues','Two tiers: dry-run preview, then opt-in apply. Destructive actions always require confirmation.'],
+      alerts:   ['Multi-channel alerts','Telegram, Slack, HTTP webhook, CLI. Same intelligence, the surface that fits your day.'],
+      cost1:    ['Cost (1 site)',      '$13/mo RunCloud + a Hetzner CX11 — Perch is free forever on top.'],
+      cost10:   ['Cost (10 sites)',    'Still $13/mo. Add sites without adding plans. The bigger your fleet, the bigger Perch wins.'],
+      cost50:   ['Cost (50 sites)',    'A bigger box, $25 RunCloud. Vs $1,750+ on Kinsta. Math that lets you sleep.'],
+      data:     ['Owns your data',     'Your audit history, your credentials (AES-256-GCM vault), your patterns. Nothing leaves your hardware.']
+    };
+    var rows = document.querySelectorAll('#cmp-table tbody tr');
+    var panel = document.getElementById('feat-panel');
+    function update(key){
+      var f = feats[key];
+      if (!f || !panel) return;
+      panel.innerHTML = '<div class="label">' + (key.indexOf('cost')===0 ? 'Cost' : 'Feature') + '</div>' +
+        '<h4>' + f[0] + '</h4>' +
+        '<p>' + f[1] + '</p>' +
+        '<div class="cta"><a class="btn btn-ghost" href="https://github.com/adityaarsharma/perch" rel="noopener" style="padding:8px 14px;font-size:13px">See on GitHub →</a></div>';
+    }
+    rows.forEach(function(r){
+      var key = r.getAttribute('data-feat');
+      if (!key) return;
+      r.addEventListener('mouseenter', function(){
+        rows.forEach(function(x){ x.classList.remove('is-active'); });
+        r.classList.add('is-active');
+        update(key);
+      });
+      r.addEventListener('click', function(){
+        rows.forEach(function(x){ x.classList.remove('is-active'); });
+        r.classList.add('is-active');
+        update(key);
+      });
+    });
+  })();
+
+  // Sticky star + count
+  (function(){
+    var btn = document.getElementById('sticky-star');
+    var count = document.getElementById('star-count');
+    if (!btn) return;
+    function showHide(){
+      var y = window.scrollY || window.pageYOffset || 0;
+      btn.classList.toggle('is-visible', y > window.innerHeight * 0.6);
+    }
+    showHide();
+    window.addEventListener('scroll', showHide, { passive: true });
+
+    // Star count cache
+    function fetchStars(){
+      var KEY = 'perch-stars';
+      try {
+        var c = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (c && (Date.now() - c.t) < 60000){
+          if (typeof c.v === 'number') count.textContent = '· ' + c.v.toLocaleString();
+          return;
+        }
+      } catch(e){}
+      var ctrl = ('AbortController' in window) ? new AbortController() : null;
+      var to = setTimeout(function(){ if (ctrl) ctrl.abort(); }, 4000);
+      fetch('https://api.github.com/repos/adityaarsharma/perch', { signal: ctrl ? ctrl.signal : undefined })
+        .then(function(r){ return r.ok ? r.json() : Promise.reject(); })
+        .then(function(d){
+          clearTimeout(to);
+          if (typeof d.stargazers_count === 'number'){
+            count.textContent = '· ' + d.stargazers_count.toLocaleString();
+            try { localStorage.setItem(KEY, JSON.stringify({ t: Date.now(), v: d.stargazers_count })); } catch(e){}
+          }
+        })
+        .catch(function(){ clearTimeout(to); /* silent */ });
+    }
+    fetchStars();
+  })();
+
+  // Roadmap pulse on view
+  (function(){
+    var done = document.querySelectorAll('.tl-item.done');
+    if (!done.length) return;
+    if ('IntersectionObserver' in window){
+      var ro = new IntersectionObserver(function(entries){
+        entries.forEach(function(e){
+          if (e.isIntersecting){ e.target.classList.add('is-pulsed'); ro.unobserve(e.target); }
+        });
+      }, { threshold: 0.4 });
+      done.forEach(function(el){ ro.observe(el); });
+    } else {
+      done.forEach(function(el){ el.classList.add('is-pulsed'); });
+    }
+  })();
+
+  // Easter egg: type "perch"
+  (function(){
+    if (prefersReduced) return;
+    var target = 'perch';
+    var buf = '';
+    document.addEventListener('keydown', function(e){
+      if (e.target && /^(input|textarea|select)$/i.test(e.target.tagName)) return;
+      if (!e.key || e.key.length !== 1) return;
+      buf = (buf + e.key.toLowerCase()).slice(-target.length);
+      if (buf === target){
+        buf = '';
+        var f = document.createElement('div');
+        f.className = 'feather-fly';
+        f.textContent = '🪶';
+        f.style.top = (10 + Math.random() * 70) + '%';
+        document.body.appendChild(f);
+        setTimeout(function(){ f.remove(); }, 4200);
+      }
+    });
+  })();
+
 })();
 </script>
 </body>

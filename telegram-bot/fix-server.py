@@ -3,7 +3,7 @@
 Fix Server — Local HTTP API for self-healing actions
 Listens on 127.0.0.1 only. Called by bot.py and monitor.sh buttons.
 """
-import os, subprocess, json, sys, hmac
+import os, subprocess, json, sys, hmac, time, urllib.request, urllib.error
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 
@@ -46,6 +46,42 @@ if HOST not in ('127.0.0.1', '::1', 'localhost'):
     print(f"WARNING: binding to {HOST} — ensure firewall blocks port {PORT} from public access.", flush=True)
 
 SCRIPTS = Path(__file__).parent / 'scripts'
+
+# Audit trail: every action this server runs is POSTed to Perch's HTTP API
+# /api/log_action so it lands in brain.actions_log alongside MCP-side actions.
+# Best-effort — failure to log never blocks the actual action.
+PERCH_API_BASE  = os.environ.get('PERCH_API_BASE',  'http://127.0.0.1:3013')
+PERCH_API_TOKEN = os.environ.get('PERCH_API_TOKEN', '')
+
+def log_action_to_brain(action_type: str, target: str, args: dict,
+                         result: dict, ok: bool) -> None:
+    """Best-effort audit log. Never raises."""
+    if not PERCH_API_TOKEN:
+        return
+    try:
+        body = json.dumps({
+            'args': {
+                'action_type': action_type,
+                'target': target,
+                'args': args,
+                'result': result,
+                'ok': ok,
+            }
+        }).encode()
+        req = urllib.request.Request(
+            url=f'{PERCH_API_BASE}/api/log_action',
+            data=body,
+            method='POST',
+            headers={
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {PERCH_API_TOKEN}',
+            },
+        )
+        with urllib.request.urlopen(req, timeout=3) as r:
+            r.read()
+    except Exception as e:
+        # Never let audit failures block the action — log and move on
+        print(f'[fix] audit log failed (non-fatal): {e}', flush=True)
 
 ROUTES = {
     # Core fix actions
@@ -97,21 +133,37 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({'error': f'Script not found: {script}'}).encode())
             return
 
+        action_ok = True
+        started = time.time()
         try:
             r = subprocess.run(
                 ['bash', str(script_path)],
                 capture_output=True, text=True, timeout=60
             )
             output = (r.stdout + r.stderr).strip()
+            action_ok = r.returncode == 0
         except subprocess.TimeoutExpired:
             output = 'Script timed out after 60s'
+            action_ok = False
         except Exception as e:
             output = f'Error: {e}'
+            action_ok = False
+
+        duration_ms = int((time.time() - started) * 1000)
+
+        # Audit trail to Perch brain (best-effort, never blocks response)
+        log_action_to_brain(
+            action_type='fix_server.' + self.path.lstrip('/'),
+            target='localhost',
+            args={'script': script, 'duration_ms': duration_ms},
+            result={'output_truncated': output[:500] if output else ''},
+            ok=action_ok,
+        )
 
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
         self.end_headers()
-        self.wfile.write(json.dumps({'output': output}).encode())
+        self.wfile.write(json.dumps({'output': output, 'ok': action_ok}).encode())
 
     def log_message(self, *args):
         pass  # Suppress access logs

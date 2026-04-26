@@ -14,11 +14,27 @@
  *   set -a && . ~/.perch/.env && set +a
  */
 
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, writeFileSync } from "fs";
 import { createInterface } from "readline";
+import { homedir } from "os";
+import { join } from "path";
 import {
   vaultPut, vaultGet, vaultList, vaultDelete, vaultExists, vaultRotate,
 } from "../src/core/vault.js";
+
+// ── Trusted-host management (mirrors src/core/ssh-enhanced.ts) ─────────────
+
+const HOST_KEYS_PATH = join(process.env.PERCH_VAULT_DIR ?? join(homedir(), ".perch"), "known_hosts.json");
+
+function loadKnownHosts(): Record<string, string> {
+  if (!existsSync(HOST_KEYS_PATH)) return {};
+  try { return JSON.parse(readFileSync(HOST_KEYS_PATH, "utf8")) as Record<string, string>; }
+  catch { return {}; }
+}
+
+function saveKnownHosts(map: Record<string, string>): void {
+  writeFileSync(HOST_KEYS_PATH, JSON.stringify(map, null, 2), { mode: 0o600 });
+}
 
 // ── Argument parsing (no external deps) ─────────────────────────────────────
 
@@ -60,16 +76,24 @@ Commands:
   rotate --old-key=OLD            Re-encrypt all entries (after rotating PERCH_MASTER_KEY)
   status                          Show vault state
 
+Trusted SSH host fingerprints (TOFU):
+  trust list                      Show all pinned host fingerprints
+  trust untrust <host>            Remove a host's pinned fingerprint (next connect re-pins)
+  trust untrust-all               Wipe all pinned fingerprints (rare, e.g. fleet rebuild)
+
 Examples:
   npm run vault list
   npm run vault add ssh:production-1 -- --file=/home/serverbrain/.ssh/id_ed25519
   npm run vault add runcloud:apikey -- --value="rc_xxxxx"
   npm run vault get ssh:production-1
   npm run vault delete ssh:production-1
+  npm run vault trust list
+  npm run vault trust untrust 95.216.156.89
 
 Environment:
-  PERCH_MASTER_KEY  required — derives the AES-256-GCM key
-  PERCH_VAULT_DIR   optional — defaults to ~/.perch
+  PERCH_MASTER_KEY              required — derives the AES-256-GCM key
+  PERCH_VAULT_DIR               optional — defaults to ~/.perch
+  PERCH_SSH_TRUST_NEW_HOSTS=0   strict mode — require pre-pinned fingerprints (no TOFU)
 `);
 }
 
@@ -188,8 +212,57 @@ async function cmdRotate(args: ParsedArgs): Promise<void> {
     console.error("  (set PERCH_MASTER_KEY to the NEW key first, then pass the OLD key here)");
     process.exit(1);
   }
-  const { rotated } = vaultRotate(oldKey);
+  const { rotated, upgraded_v1_to_v2 } = vaultRotate(oldKey);
   console.log(`✓ Re-encrypted ${rotated} entries with new master key`);
+  if (upgraded_v1_to_v2 > 0) {
+    console.log(`✓ Upgraded ${upgraded_v1_to_v2} entries from v1 (SHA-256) to v2 (scrypt)`);
+  }
+}
+
+async function cmdTrust(args: ParsedArgs): Promise<void> {
+  // Subcommand router: trust list | trust untrust <host> | trust untrust-all
+  const sub = args.positional[0];
+  if (!sub || sub === "list") {
+    const known = loadKnownHosts();
+    const entries = Object.entries(known);
+    if (entries.length === 0) {
+      console.log("(no hosts pinned yet — first SSH connection will auto-pin)");
+      return;
+    }
+    console.log(`Pinned host fingerprints (${entries.length}):`);
+    for (const [host, fp] of entries.sort()) {
+      // Show only first 16 hex chars so a screenshot doesn't expose full fingerprint
+      console.log(`  ${host.padEnd(28)} sha256:${fp.slice(0, 16)}…`);
+    }
+    console.log(`\nFile: ${HOST_KEYS_PATH}`);
+    return;
+  }
+
+  if (sub === "untrust") {
+    const host = args.positional[1];
+    if (!host) { console.error("✗ Usage: vault trust untrust <host>"); process.exit(1); }
+    const known = loadKnownHosts();
+    if (!(host in known)) { console.log(`(${host} was not pinned — nothing to do)`); return; }
+    delete known[host];
+    saveKnownHosts(known);
+    console.log(`✓ Removed pinned fingerprint for ${host}`);
+    console.log("  Next SSH connection to this host will pin a fresh fingerprint (TOFU).");
+    return;
+  }
+
+  if (sub === "untrust-all") {
+    const known = loadKnownHosts();
+    const count = Object.keys(known).length;
+    if (count === 0) { console.log("(no hosts pinned)"); return; }
+    saveKnownHosts({});
+    console.log(`✓ Wiped ${count} pinned fingerprint(s).`);
+    console.log("  Use sparingly — only after a fleet rebuild or known infrastructure rotation.");
+    return;
+  }
+
+  console.error(`✗ Unknown trust subcommand: ${sub}`);
+  console.error("  Use: trust list | trust untrust <host> | trust untrust-all");
+  process.exit(1);
 }
 
 async function cmdStatus(): Promise<void> {
@@ -214,6 +287,7 @@ async function main(): Promise<void> {
       case "delete": await cmdDelete(args); break;
       case "rotate": await cmdRotate(args); break;
       case "status": await cmdStatus(); break;
+      case "trust":  await cmdTrust(args); break;
       case "help":
       case "--help":
       case "-h":

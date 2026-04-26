@@ -25,7 +25,7 @@
  */
 
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import { initBrain, getBrain, getWebappHistory, incrementKnowledge, logProblem } from "../core/brain.js";
+import { initBrain, getBrain, getWebappHistory, incrementKnowledge, logProblem, logAction } from "../core/brain.js";
 import { vaultGet, vaultList } from "../core/vault.js";
 import { safeForOutput, safeTruncate } from "../core/redact.js";
 import { sshExec, wpCli, detectWebappType } from "../core/ssh-enhanced.js";
@@ -101,6 +101,18 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<unknow
   // ── Brain
   "brain": async () => getBrain(brain),
   "brain.history": async (a) => getWebappHistory(brain, String(a.domain || "")),
+
+  // ── Audit log (used by fix-server.py to record shell-side actions)
+  "log_action": async (a) => {
+    const id = logAction(brain, {
+      action_type: String(a.action_type || "unknown"),
+      target: a.target ? String(a.target) : undefined,
+      args: (a.args as Record<string, unknown>) ?? {},
+      result: (a.result as Record<string, unknown>) ?? null,
+      ok: a.ok !== false,
+    });
+    return { id, recorded: true };
+  },
 
   // ── Vault (read-only over HTTP — no put/delete via API for safety)
   "vault.list": async () => ({ entries: vaultList() }),
