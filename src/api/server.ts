@@ -29,41 +29,41 @@ import { initBrain, getBrain, getWebappHistory, incrementKnowledge, logProblem, 
 import { vaultGet, vaultList } from "../core/vault.js";
 import { safeForOutput, safeTruncate } from "../core/redact.js";
 import { sshExec, wpCli, detectWebappType } from "../core/ssh-enhanced.js";
-import { auditDatabase, cleanTransients } from "../modules/wordpress/db.js";
-import { auditPlugins } from "../modules/wordpress/plugins.js";
-import { auditSecurity } from "../modules/wordpress/security.js";
-import { checkBackupHealth } from "../modules/wordpress/backup.js";
-import { scanImages, optimizeImages } from "../modules/wordpress/images.js";
+import { auditDatabase, cleanTransients } from "../modules/stack/wordpress/cleanup/db.js";
+import { auditPlugins } from "../modules/stack/wordpress/security/plugins.js";
+import { auditSecurity } from "../modules/stack/wordpress/security/security.js";
+import { checkBackupHealth } from "../modules/stack/wordpress/operations/backup.js";
+import { scanImages, optimizeImages } from "../modules/stack/wordpress/performance/images.js";
 import {
   startBulkCompression,
   getBulkCompressionStatus,
   cancelBulkCompression,
   listBulkCompressionJobs,
   cleanupBulkCompression,
-} from "../modules/wordpress/images-bulk.js";
-import { snapshotPerformance } from "../modules/wordpress/perf.js";
-import { diagnoseErrors } from "../modules/wordpress/errors.js";
-import { auditDisk } from "../modules/wordpress/disk.js";
-import { scanMalware } from "../modules/wordpress/malware.js";
-import { auditThumbnails, cleanThumbnails } from "../modules/wordpress/thumbnails.js";
-import { profilePlugins } from "../modules/wordpress/plugins-perf.js";
-import { auditUnusedPlugins, applyPluginCleanup } from "../modules/wordpress/plugins-cleanup.js";
-import { auditMediaOrphans } from "../modules/wordpress/media-orphans.js";
-import { auditRevisions, cleanRevisions } from "../modules/wordpress/revisions.js";
-import { auditTranslations, cleanTranslations } from "../modules/wordpress/translations.js";
-import { auditHtaccess } from "../modules/wordpress/htaccess.js";
-import { getCoreStatus, applyCoreUpdate } from "../modules/wordpress/core.js";
-import { searchReplace } from "../modules/wordpress/search-replace.js";
-import { auditCron, runCronEvents, flushRewrites } from "../modules/wordpress/cron.js";
-import { auditSsl } from "../modules/wordpress/ssl.js";
-import { auditWpConfig } from "../modules/wordpress/wp-config.js";
-import { auditMultisite } from "../modules/wordpress/multisite.js";
-import { testEmail } from "../modules/wordpress/email-test.js";
-import { auditCaching } from "../modules/wordpress/caching.js";
-import { auditWooCommerce } from "../modules/wordpress/woocommerce.js";
-import { auditYoast } from "../modules/wordpress/yoast.js";
-import { runLighthouse } from "../modules/wordpress/lighthouse.js";
-import { buildRecommendations } from "../modules/wordpress/recommend.js";
+} from "../modules/stack/wordpress/performance/images-bulk.js";
+import { snapshotPerformance } from "../modules/stack/wordpress/performance/perf.js";
+import { diagnoseErrors } from "../modules/stack/wordpress/diagnostics/errors.js";
+import { auditDisk } from "../modules/stack/wordpress/diagnostics/disk.js";
+import { scanMalware } from "../modules/stack/wordpress/security/malware.js";
+import { auditThumbnails, cleanThumbnails } from "../modules/stack/wordpress/performance/thumbnails.js";
+import { profilePlugins } from "../modules/stack/wordpress/performance/plugins-perf.js";
+import { auditUnusedPlugins, applyPluginCleanup } from "../modules/stack/wordpress/cleanup/plugins-cleanup.js";
+import { auditMediaOrphans } from "../modules/stack/wordpress/cleanup/media-orphans.js";
+import { auditRevisions, cleanRevisions } from "../modules/stack/wordpress/cleanup/revisions.js";
+import { auditTranslations, cleanTranslations } from "../modules/stack/wordpress/cleanup/translations.js";
+import { auditHtaccess } from "../modules/stack/wordpress/security/htaccess.js";
+import { getCoreStatus, applyCoreUpdate } from "../modules/stack/wordpress/operations/core.js";
+import { searchReplace } from "../modules/stack/wordpress/operations/search-replace.js";
+import { auditCron, runCronEvents, flushRewrites } from "../modules/stack/wordpress/operations/cron.js";
+import { auditSsl } from "../modules/stack/wordpress/security/ssl.js";
+import { auditWpConfig } from "../modules/stack/wordpress/security/wp-config.js";
+import { auditMultisite } from "../modules/stack/wordpress/operations/multisite.js";
+import { testEmail } from "../modules/stack/wordpress/operations/email-test.js";
+import { auditCaching } from "../modules/stack/wordpress/performance/caching.js";
+import { auditWooCommerce } from "../modules/stack/wordpress/plugins/woocommerce.js";
+import { auditYoast } from "../modules/stack/wordpress/plugins/yoast.js";
+import { runLighthouse } from "../modules/stack/wordpress/performance/lighthouse.js";
+import { buildRecommendations } from "../modules/stack/wordpress/recommend.js";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 

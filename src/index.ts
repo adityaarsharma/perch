@@ -14,13 +14,13 @@ import { formatPerchResponse } from "./core/gateway.js";
 import { sshExec as sshExecEnhanced, wpCli, detectWebappType } from "./core/ssh-enhanced.js";
 import { vaultPut, vaultGet, vaultList, vaultDelete, vaultExists } from "./core/vault.js";
 import { safeForOutput, safeTruncate } from "./core/redact.js";
-import { auditDatabase, cleanTransients } from "./modules/wordpress/db.js";
-import { auditPlugins, updatePlugin, deactivatePlugin } from "./modules/wordpress/plugins.js";
-import { auditSecurity } from "./modules/wordpress/security.js";
-import { checkBackupHealth } from "./modules/wordpress/backup.js";
-import { scanImages, optimizeImages, checkImageTools } from "./modules/wordpress/images.js";
-import { snapshotPerformance } from "./modules/wordpress/perf.js";
-import { diagnoseErrors } from "./modules/wordpress/errors.js";
+import { auditDatabase, cleanTransients } from "./modules/stack/wordpress/cleanup/db.js";
+import { auditPlugins, updatePlugin, deactivatePlugin } from "./modules/stack/wordpress/security/plugins.js";
+import { auditSecurity } from "./modules/stack/wordpress/security/security.js";
+import { checkBackupHealth } from "./modules/stack/wordpress/operations/backup.js";
+import { scanImages, optimizeImages, checkImageTools } from "./modules/stack/wordpress/performance/images.js";
+import { snapshotPerformance } from "./modules/stack/wordpress/performance/perf.js";
+import { diagnoseErrors } from "./modules/stack/wordpress/diagnostics/errors.js";
 
 // Initialize brain DB (SQLite knowledge base)
 const brain = initBrain();
