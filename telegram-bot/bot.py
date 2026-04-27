@@ -288,9 +288,66 @@ def handle_message(msg):
             send(f'```\n{out}\n```', chat_id=chat_id, markup=main_kb())
         return
 
+    # ── Optional: Gemini-routed conversational mode (BYOK) ──────────────
+    # When GEMINI_API_KEY is set, route natural-language messages to a
+    # Perch tool via Gemini Flash, then format the reply conversationally.
+    # Without the key: falls through to the unknown-command response below.
+    try:
+        import llm  # local module — telegram-bot/llm.py
+        if llm.is_enabled():
+            if llm.is_destructive(text):
+                send('🛑 Hard NO. Destructive ops (delete/wipe/shutdown/clear-logs/rm -rf) are blocked from chat. SSH in manually if you really need this.', chat_id=chat_id)
+                return
+            route = llm.route_intent(text)
+            if route:
+                tool = route['tool']
+                domain = route.get('domain')
+                tool_to_endpoint = {
+                    'access_top_ips': '/access-top-ips',
+                    'access_summary': '/access-summary',
+                    'wp_errors':      '/wp-errors',
+                    'php_errors':     '/php-errors',
+                    'mysql_errors':   '/mysql-errors',
+                    'server_pulse':   '/server-pulse',
+                    'brain':          '/status',
+                }
+                endpoint = tool_to_endpoint.get(tool)
+                if endpoint:
+                    body_arg = ''
+                    if domain and tool in ('access_top_ips', 'access_summary', 'wp_errors'):
+                        body_arg = f'{{"DOMAIN":"{domain}"}}'
+                    resp = send(f'⚙️ Running {tool}…', chat_id=chat_id)
+                    mid = resp.get('result', {}).get('message_id')
+                    raw = fix(endpoint) if not body_arg else fix_with_body(endpoint, body_arg)
+                    formatted = llm.format_reply(text, raw, tool_name=tool)
+                    final = formatted or f'```\n{(raw or "no output")[:3500]}\n```'
+                    if mid:
+                        edit(mid, final, chat_id=chat_id, markup=main_kb())
+                    else:
+                        send(final, chat_id=chat_id, markup=main_kb())
+                    return
+    except ImportError:
+        pass
+    except Exception as _llm_err:
+        print(f'[bot] llm path error: {_llm_err}', flush=True)
+
     # Unknown command
     safe_cmd = cmd.replace('`', '').replace('*', '').replace('_', '').replace('[', '').replace(']', '')
     send(f'Unknown command: `{safe_cmd}`\nType /help for all commands.', chat_id=chat_id)
+
+
+def fix_with_body(endpoint: str, body_json: str) -> str:
+    """fix-server call that POSTs a JSON body — used by LLM-routed tools."""
+    try:
+        r = requests.post(
+            f'{FIX_URL}{endpoint}',
+            headers={'Authorization': f'Bearer {FIX_TOKEN}', 'Content-Type': 'application/json'},
+            data=body_json,
+            timeout=60,
+        )
+        return r.json().get('output', r.text)
+    except Exception as e:
+        return f'fix-server error: {e}'
 
 
 def handle_callback(cb):

@@ -33,12 +33,23 @@ Make Perch genuinely RunCloud-aware. Two layers:
 These are now **explicitly** referenced in scripts — no auto-detect that
 falls through to wrong defaults.
 
-### API integration ❌
-- `import-runcloud-servers.ts` is the only thing that talks to the
-  RunCloud API today, and it runs once at setup
-- No live tools like `runcloud.list_servers`, `runcloud.list_apps`,
-  `runcloud.deploy`, `runcloud.create_backup`, `runcloud.switch_php`,
-  `runcloud.create_app`, `runcloud.ssl_install`
+### API integration — historical baseline preserved ✅, modern wiring ❌
+- **`src/modules/runcloud-v1/index.ts`** — the original 135-tool MCP that
+  existed pre-v2-rebrand (commit `825d3c3`). Saved byte-for-byte. Builds
+  as a separate MCP server today. See `src/modules/runcloud-v1/README.md`
+  for install instructions.
+- `scripts/import-runcloud-servers.ts` — bootstrap importer (existing)
+- ❌ Not yet ported into the v2 HANDLERS pattern in `src/api/server.ts` —
+  that's the long-term goal so all tools live behind one HTTP API +
+  Bearer auth.
+
+### Tool catalog (135 from runcloud-v1, available today as separate MCP)
+- 🖥️ Servers — 17 · 🌐 Web Applications — 12 · 🔧 PHP Installer — 3
+- 🌿 Git — 6 · 🌍 Domains — 3 · 🔒 SSL — 10 · 🗄️ Databases — 12
+- 👤 System Users — 6 · 🔑 SSH Keys — 4 · ⏰ Cron — 5 · 📋 Supervisor — 8
+- 🛡️ Firewall — 9 · ⚙️ Services — 2 · 🔗 External APIs — 5
+- 🔍 Cross-Server Search — 4 · 📈 Health & Perf — 7 · 🚀 Deployments — 2
+- 🟦 WordPress (SSH) — 5 · 🖥️ SSH Direct — 4 · 🔧 Self-Healing — 7
 
 ## Gaps (toward vision)
 
@@ -60,10 +71,19 @@ falls through to wrong defaults.
 
 ## Next ship task
 
-**Add `runcloud.list_servers` and `runcloud.list_apps` MCP tools** as the
-first read-only RunCloud API integration. Read `RUNCLOUD_API_TOKEN` from
-vault, paginate through `/api/v3/servers` and `/api/v3/servers/{id}/webapps`,
-return the structured list. ~2h. Lays the foundation for the rest.
+**Bridge the 135 v1 tools into the v2 HANDLERS pattern in
+`src/api/server.ts`.** Two-step:
+
+1. Add `src/modules/runcloud-v1/bridge.ts` — imports the v1 module's tool
+   list + dispatcher, exposes a single `runcloud_v1_call(toolName, args)`
+   function that returns the same JSON the v1 MCP would.
+2. In `src/api/server.ts`, register a single dynamic handler:
+   `Object.fromEntries(v1ToolNames.map(t => [\`runcloud.\${t}\`, async (a) => runcloud_v1_call(t, a)]))`
+
+Result: every public Perch deployment exposes all 135 tools at
+`POST /api/runcloud.<tool_name>` with Bearer auth — no separate MCP needed.
+
+~2h. Single biggest leverage move for completing block 7.
 
 ## Boundaries
 

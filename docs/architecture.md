@@ -74,10 +74,10 @@ and the smallest next ship task.
 | 3 | HTTP API + MCP | ✅ live, 20+ tools | [03-http-api-mcp.md](./blocks/03-http-api-mcp.md) |
 | 4 | Monitor Module | ✅ live, 14 rules, multi-server pending | [04-monitor.md](./blocks/04-monitor.md) |
 | 5 | Notifier (Telegram + Slack) | ✅ Telegram live, Slack mirror live, Slack buttons pending | [05-notifier.md](./blocks/05-notifier.md) |
-| 6 | LLM Module | ⚠️ Niyati has it inline; not yet a shared `llm.py`/`llm.ts` | [06-llm.md](./blocks/06-llm.md) |
-| 7 | RunCloud Module | ⚠️ structure-aware scripts only; no API tools yet | [07-runcloud.md](./blocks/07-runcloud.md) |
+| 6 | LLM Module | ✅ shared `telegram-bot/llm.py` + bot.py wired (BYOK) | [06-llm.md](./blocks/06-llm.md) |
+| 7 | RunCloud Module | ✅ structure-aware + 135-tool v1 MCP preserved at `src/modules/runcloud-v1/` | [07-runcloud.md](./blocks/07-runcloud.md) |
 | 8 | WordPress Module | ✅ 7 sub-modules, all under HTTP API | [08-wordpress.md](./blocks/08-wordpress.md) |
-| 9 | Lifecycle | ✅ install/update/uninstall scripts present | [09-lifecycle.md](./blocks/09-lifecycle.md) |
+| 9 | Lifecycle | ✅ install/update/uninstall + `perch doctor` (10-row health card) | [09-lifecycle.md](./blocks/09-lifecycle.md) |
 | 10 | Distribution | ✅ landing + skill + repo public | [10-distribution.md](./blocks/10-distribution.md) |
 
 Legend:

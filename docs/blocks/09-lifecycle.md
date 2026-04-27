@@ -44,6 +44,15 @@ Perch up.
 - [ ] Claude Code one-shot: `claude /plugin install runcloud-server`
 - [ ] Update changelogs surfaced via Telegram on `perch_self_update` success
 
+## Shipped today
+
+- `scripts/perch-doctor.sh` — 10-row health card across all blocks
+  (Brain · Vault · HTTP API · Monitor · Notifier · LLM · RunCloud ·
+  WordPress · Lifecycle · Distribution). Returns exit 0 = healthy, 1 = at
+  least one fail. `--json` mode for automation.
+
+Run: `./scripts/perch-doctor.sh` from anywhere.
+
 ## Next ship task
 
 **Add `perch doctor`** — a script that runs through each block and reports:

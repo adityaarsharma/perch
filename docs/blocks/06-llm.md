@@ -35,28 +35,31 @@ Recommended LLM: Gemini Flash (free tier, low latency).
 
 ## Gaps (toward vision)
 
-- [ ] Extract Niyati's Gemini logic into `telegram-bot/llm.py`
-  (~150 lines, pure functions)
-- [ ] Wire `bot.py` to call `llm.route_intent` before the fall-through
-- [ ] Add Markdown-safety helper to public version (`**X**` → `*X*` for
-  Telegram-legacy parse mode)
+- [x] ~~Extract Niyati's Gemini logic into `telegram-bot/llm.py`~~ ✅ shipped
+- [x] ~~Wire `bot.py` to call `llm.route_intent` before the fall-through~~ ✅ shipped
+- [x] ~~Add Markdown-safety helper~~ ✅ `md_safe()` in llm.py
 - [ ] Webapp-list cache (5-min) so `route_intent` can resolve fuzzy domain
-  names like "thebigskyfarm" → "thebigskyfarm.com"
+  names like "thebigskyfarm" → "thebigskyfarm.com" — placeholder added,
+  caller currently passes empty list
 - [ ] Setup wizard (block 9) prompts for `GEMINI_API_KEY` with link to
   Google AI Studio
 - [ ] Per-deployment LLM choice — eventually allow Claude / OpenAI / local
 
 ## Next ship task
 
-**Extract `telegram-bot/llm.py` from `niyati.py` and wire `bot.py`.**
-- Copy `_perch_tool_route`, `_call_gemini`, `_telegram_md_safe`,
-  `PERCH_TOOL_CATALOG`, `_list_known_webapps` into `llm.py`
-- Add `if os.environ.get("GEMINI_API_KEY"):` gate at module load
-- In `bot.py`'s `handle_message`, after `if cmd in COMMANDS:` falls through,
-  try `llm.route_intent(text)` → if a tool is picked, call `fix(endpoint)`
-  and `llm.format_reply(text, output)`
-- Update `setup.sh` to ask for the key (optional)
-~3h. Single biggest leverage move for public users.
+**Wire fuzzy domain resolution into `route_intent`.** Caller (bot.py or
+llm.py itself) needs to fetch the live webapp list — either from
+`/api/brain` (returns `webapps[].domain`) cached for 5 min, or directly
+from `~/.perch/brain.db`. Pass that list to `route_intent(text,
+known_domains=...)` so "thebigskyfarm" resolves to "thebigskyfarm.com".
+~1h.
+
+## Shipped today
+
+- `telegram-bot/llm.py` — 180 lines, pure functions, BYOK gated
+- `bot.py` wired with optional LLM path before unknown-command fallback
+- `fix_with_body()` helper added to bot.py for tools needing JSON body
+- DESTRUCTIVE_RE check before any LLM call
 
 ## Boundaries
 
