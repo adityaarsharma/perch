@@ -56,10 +56,18 @@ known_domains=...)` so "thebigskyfarm" resolves to "thebigskyfarm.com".
 
 ## Shipped today
 
-- `telegram-bot/llm.py` — 180 lines, pure functions, BYOK gated
+- `telegram-bot/llm.py` — pure functions, BYOK gated
 - `bot.py` wired with optional LLM path before unknown-command fallback
 - `fix_with_body()` helper added to bot.py for tools needing JSON body
 - DESTRUCTIVE_RE check before any LLM call
+- **Static vs dynamic routing**: `route_intent` now returns
+  `{mode: "static"}` for questions answerable from brain snapshot, or
+  `{mode: "dynamic", tool, domain}` for live diagnostics. Static = no
+  session, just brain context + Gemini reply. Dynamic = opens a Perch
+  session (writes `/tmp/perch_session.json`), runs the tool, replies,
+  session stays active 2h for cross-questions.
+- `format_static_reply(user_q, brain_context)` — new function to render
+  static-mode answers from brain snapshot.
 
 ## Boundaries
 

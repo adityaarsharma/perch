@@ -112,16 +112,16 @@ server_pulse        : load, disk, RAM, top procs, failed services
 # ── Public functions ──────────────────────────────────────────────────────
 
 def route_intent(text: str, known_domains: list[str] | None = None) -> dict | None:
-    """Pick a Perch tool that fits the natural-language question.
+    """Classify the question — static answer vs dynamic tool call vs nothing.
 
-    Returns {"tool": str, "domain": str|None} or None when:
-    - no key configured
-    - text isn't tech-y enough to bother Gemini with
-    - Gemini call fails / times out
-    - Gemini explicitly returns NONE
+    Returns:
+      None — LLM disabled, text not tech-y, or Gemini failed/refused
+      {"mode": "static"} — answerable from brain snapshot, no session needed
+      {"mode": "dynamic", "tool": "...", "domain": "..." | None} — needs a
+        live tool, caller should open a Perch session and run it
 
-    Pass known_domains to enable fuzzy resolution like "thebigskyfarm" →
-    "thebigskyfarm.com".
+    Pass known_domains to enable fuzzy resolution ("thebigskyfarm" →
+    "thebigskyfarm.com").
     """
     if not is_enabled():
         return None
@@ -133,11 +133,16 @@ def route_intent(text: str, known_domains: list[str] | None = None) -> dict | No
         domain_hint = "\nKnown domains on this server: " + ", ".join(known_domains[:30])
 
     prompt = (
-        "Pick ONE Perch tool for this question, or NONE if generic chat.\n"
-        "Tools:\n" + TOOL_CATALOG +
+        "Classify this Perch (server-management) question:\n"
+        "  - STATIC: answerable from durable brain snapshot (server count, webapp count,\n"
+        "    open problems, top issue types, what is Perch, etc.) — NO session needed.\n"
+        "  - DYNAMIC: needs LIVE shell / log / api call from this list of tools:\n"
+        + TOOL_CATALOG +
         domain_hint +
-        '\nResolve fuzzy domain names against the known list (e.g. "thebigskyfarm" -> match).\n'
-        "Reply ONE LINE JSON only — no prose. Keys: tool (string|null), domain (string|null).\n\n"
+        "\nIf STATIC, reply: {\"mode\":\"static\"}\n"
+        "If DYNAMIC, reply: {\"mode\":\"dynamic\",\"tool\":\"<name>\",\"domain\":\"<domain or null>\"}\n"
+        "If neither (generic chat), reply: {\"mode\":null}\n"
+        "ONE LINE JSON only.\n\n"
         f'Q: "{text[:200]}"'
     )
     reply = _call_gemini(prompt, max_tokens=80, temperature=0.0)
@@ -150,10 +155,37 @@ def route_intent(text: str, known_domains: list[str] | None = None) -> dict | No
         data = json.loads(m.group(0))
     except json.JSONDecodeError:
         return None
-    tool = data.get("tool")
-    if not tool or tool == "null":
+    mode = data.get("mode")
+    if mode == "static":
+        return {"mode": "static"}
+    if mode == "dynamic":
+        tool = data.get("tool")
+        if not tool or tool == "null":
+            return None
+        return {"mode": "dynamic", "tool": tool, "domain": data.get("domain")}
+    return None
+
+
+def format_static_reply(user_q: str, brain_context: str) -> str | None:
+    """Static-mode answer using the brain snapshot. No tool was run.
+
+    Caller passes a string with [Perch brain snapshot] block — server count,
+    webapp count, problems, etc. Gemini formats a conversational reply that
+    doesn't pretend to have run anything live.
+    """
+    if not is_enabled():
         return None
-    return {"tool": tool, "domain": data.get("domain")}
+    prompt = (
+        "You are Perch, a server-management assistant. The user asked a question "
+        "answerable from durable brain memory — no live tool was run. "
+        "Reply conversationally in 3-7 lines. Use *single-asterisk* bold for Telegram. "
+        "If user wants live data (top IPs, error logs, etc.), suggest they send "
+        "`/perch_start` to open a session.\n\n"
+        f"User: \"{user_q[:200]}\"\n"
+        f"Brain context:\n{brain_context[:1500]}"
+    )
+    reply = _call_gemini(prompt, max_tokens=300, temperature=0.4)
+    return md_safe(reply) if reply else None
 
 
 def format_reply(user_q: str, tool_output: str, tool_name: str = "") -> str | None:

@@ -327,32 +327,58 @@ def handle_message(msg):
                 return
             route = llm.route_intent(text)
             if route:
-                tool = route['tool']
-                domain = route.get('domain')
-                tool_to_endpoint = {
-                    'access_top_ips': '/access-top-ips',
-                    'access_summary': '/access-summary',
-                    'wp_errors':      '/wp-errors',
-                    'php_errors':     '/php-errors',
-                    'mysql_errors':   '/mysql-errors',
-                    'server_pulse':   '/server-pulse',
-                    'brain':          '/status',
-                }
-                endpoint = tool_to_endpoint.get(tool)
-                if endpoint:
-                    body_arg = ''
-                    if domain and tool in ('access_top_ips', 'access_summary', 'wp_errors'):
-                        body_arg = f'{{"DOMAIN":"{domain}"}}'
-                    resp = send(f'⚙️ Running {tool}…', chat_id=chat_id)
-                    mid = resp.get('result', {}).get('message_id')
-                    raw = fix(endpoint) if not body_arg else fix_with_body(endpoint, body_arg)
-                    formatted = llm.format_reply(text, raw, tool_name=tool)
-                    final = formatted or f'```\n{(raw or "no output")[:3500]}\n```'
-                    if mid:
-                        edit(mid, final, chat_id=chat_id, markup=main_kb())
-                    else:
-                        send(final, chat_id=chat_id, markup=main_kb())
+                mode = route.get('mode')
+
+                # ── STATIC: answer from brain snapshot, no session opens ──
+                if mode == 'static':
+                    brain_out = fix('/status')  # brain snapshot via fix-server
+                    formatted = llm.format_static_reply(text, brain_out or '')
+                    final = formatted or f'```\n{(brain_out or "no brain output")[:3500]}\n```'
+                    send(final, chat_id=chat_id, markup=main_kb())
                     return
+
+                # ── DYNAMIC: needs live tool — open session + run + reply ──
+                if mode == 'dynamic':
+                    tool = route.get('tool')
+                    domain = route.get('domain')
+                    tool_to_endpoint = {
+                        'access_top_ips': '/access-top-ips',
+                        'access_summary': '/access-summary',
+                        'wp_errors':      '/wp-errors',
+                        'php_errors':     '/php-errors',
+                        'mysql_errors':   '/mysql-errors',
+                        'server_pulse':   '/server-pulse',
+                        'brain':          '/status',
+                    }
+                    endpoint = tool_to_endpoint.get(tool)
+                    if endpoint:
+                        # Open Perch session — write /tmp/perch_session.json
+                        try:
+                            import datetime as _dt, os as _os
+                            now_iso = _dt.datetime.now().isoformat()
+                            with open('/tmp/perch_session.json', 'w') as f:
+                                f.write(f'{{"active": true, "kind": "auto", "started": "{now_iso}", "last_activity": "{now_iso}", "opened_by": "llm_dynamic"}}')
+                            try:
+                                _os.chmod('/tmp/perch_session.json', 0o666)
+                            except Exception:
+                                pass
+                        except Exception:
+                            pass
+
+                        body_arg = ''
+                        if domain and tool in ('access_top_ips', 'access_summary', 'wp_errors'):
+                            body_arg = f'{{"DOMAIN":"{domain}"}}'
+                        resp = send(f'⚙️ {tool} running… (Perch session opened)', chat_id=chat_id)
+                        mid = resp.get('result', {}).get('message_id')
+                        raw = fix(endpoint) if not body_arg else fix_with_body(endpoint, body_arg)
+                        formatted = llm.format_reply(text, raw, tool_name=tool)
+                        final = formatted or f'```\n{(raw or "no output")[:3500]}\n```'
+                        final += '\n\n_Session active 2h. Cross-questions stay in Perch context. End: /perch_end_'
+                        if mid:
+                            edit(mid, final, chat_id=chat_id, markup=main_kb())
+                        else:
+                            send(final, chat_id=chat_id, markup=main_kb())
+                        return
     except ImportError:
         pass
     except Exception as _llm_err:
