@@ -43,6 +43,11 @@ import {
 } from "../modules/wordpress/images-bulk.js";
 import { snapshotPerformance } from "../modules/wordpress/perf.js";
 import { diagnoseErrors } from "../modules/wordpress/errors.js";
+import { auditDisk } from "../modules/wordpress/disk.js";
+import { scanMalware } from "../modules/wordpress/malware.js";
+import { auditThumbnails, cleanThumbnails } from "../modules/wordpress/thumbnails.js";
+import { profilePlugins } from "../modules/wordpress/plugins-perf.js";
+import { auditUnusedPlugins, applyPluginCleanup } from "../modules/wordpress/plugins-cleanup.js";
 
 // ─── Config ──────────────────────────────────────────────────────────────────
 
@@ -242,6 +247,29 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<unknow
     const opts = buildSshOpts(a as unknown as SshAuthArgs);
     return await listBulkCompressionJobs(opts);
   },
+  "wp.audit_disk": async (a) => {
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    return await auditDisk(opts, String(a.wpPath));
+  },
+  "wp.scan_malware": async (a) => {
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    return await scanMalware(opts, String(a.wpPath), String(a.wpUser));
+  },
+  "wp.thumbnails_audit": async (a) => {
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    return await auditThumbnails(opts, String(a.wpPath), String(a.wpUser));
+  },
+  "wp.plugins_perf_profile": async (a) => {
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    return await profilePlugins(opts, String(a.wpPath), String(a.wpUser));
+  },
+  "wp.plugins_cleanup_audit": async (a) => {
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    return await auditUnusedPlugins(
+      opts, String(a.wpPath), String(a.wpUser),
+      a.inactiveDaysThreshold ? Number(a.inactiveDaysThreshold) : undefined,
+    );
+  },
 
   // ── WordPress mutations (require explicit confirm flag)
   "wp.db_clean": async (a) => {
@@ -282,6 +310,29 @@ const HANDLERS: Record<string, (args: Record<string, unknown>) => Promise<unknow
     if (a.confirm !== true) throw new Error("wp.images_compress_bulk_cleanup requires confirm:true");
     const opts = buildSshOpts(a as unknown as SshAuthArgs);
     return await cleanupBulkCompression(opts, String(a.jobId));
+  },
+  "wp.thumbnails_clean": async (a) => {
+    if (a.confirm !== true) throw new Error("wp.thumbnails_clean requires confirm:true");
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    if (!Array.isArray(a.sizeSlugs)) throw new Error("sizeSlugs (string[]) is required");
+    return await cleanThumbnails(opts, String(a.wpPath), String(a.wpUser), {
+      sizeSlugs: (a.sizeSlugs as unknown[]).map(String),
+      apply: Boolean(a.apply),
+    });
+  },
+  "wp.plugins_cleanup_apply": async (a) => {
+    if (a.confirm !== true) throw new Error("wp.plugins_cleanup_apply requires confirm:true");
+    const opts = buildSshOpts(a as unknown as SshAuthArgs);
+    if (!Array.isArray(a.slugs)) throw new Error("slugs (string[]) is required");
+    const action = String(a.action);
+    if (action !== "deactivate" && action !== "uninstall") {
+      throw new Error('action must be "deactivate" or "uninstall"');
+    }
+    return await applyPluginCleanup(opts, String(a.wpPath), String(a.wpUser), {
+      slugs: (a.slugs as unknown[]).map(String),
+      action: action as "deactivate" | "uninstall",
+      apply: Boolean(a.apply),
+    });
   },
 };
 
