@@ -1,0 +1,21 @@
+[Unit]
+Description=Perch — Telegram bot (conversational + button callbacks)
+After=network-online.target perch-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=serverbrain
+Group=serverbrain
+WorkingDirectory=/home/serverbrain/perch-src/telegram-bot
+ExecStart=/usr/bin/python3 /home/serverbrain/perch-src/telegram-bot/bot.py
+Restart=on-failure
+RestartSec=5s
+StandardOutput=append:/var/log/perch-bot.log
+StandardError=append:/var/log/perch-bot.log
+# Safety: bot.py only polls Telegram and calls fix-server over HTTP; no shell escapes needed.
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

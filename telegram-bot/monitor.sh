@@ -449,8 +449,12 @@ rule_fail2ban_spike() {
 
   local since="1 hour ago"
   local bans
-  bans=$(journalctl -u fail2ban --since "$since" --no-pager 2>/dev/null | grep -c ' Ban ' || true); bans="${bans:-0}"
-  if [ "$bans" -gt "$RULE_FAIL2BAN_BAN_RATE" ]; then
+  bans=$(journalctl -u fail2ban --since "$since" --no-pager 2>/dev/null | grep -c ' Ban ' 2>/dev/null || true)
+  # Defensive: command-substitution quirks under cron can leave multi-line / whitespace residue here.
+  bans="${bans//[^0-9]/}"
+  bans="${bans:-0}"
+  local rate; rate="${RULE_FAIL2BAN_BAN_RATE//[^0-9]/}"; rate="${rate:-50}"
+  if [ "$bans" -gt "$rate" ]; then
     send_alert "fail2ban_spike" "warning" "Brute force surge" \
       "fail2ban banned *${bans}* IP(s) in the last hour. You may be under a brute-force or scanner sweep.\n\nIf this is sustained, consider tightening rate limits or enabling additional jails." \
       "$BTN_ACK"
