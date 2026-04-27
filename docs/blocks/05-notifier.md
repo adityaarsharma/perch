@@ -31,7 +31,12 @@ Two channels:
   confirm flow)
 - ✅ Mute file shared with monitor.sh (`/tmp/perch-monitor-muted`)
 - ✅ `perch:ack` callback handler (added today)
-- ❌ **No LLM — bot.py is command-driven only** (Niyati has it; needs backport)
+- ✅ Strict-session model (NEW): only `/perch-start` (and aliases
+  `/perch_start`, `/perchstart`, `/perch`) open a session; only
+  `/perch-end` closes it. No natural-language triggers. 2h silent
+  inactivity timeout. Outside session = pure bot, no Perch routing.
+- ✅ LLM module present (block 6); `bot.py` uses it conditionally on
+  `GEMINI_API_KEY` for conversational replies.
 - ❌ Reboot is the only confirm-flow; other writes don't have it
 
 ### Slack

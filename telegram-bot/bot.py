@@ -235,6 +235,33 @@ def handle_message(msg):
         send('✅ Bot is alive! Monitor alerts are working.', chat_id=chat_id)
         return
 
+    # ── Strict-session model — Perch only opens via /perch-start or alert ──
+    # /perch-start (also /perch_start, /perchstart) — manual session open
+    if cmd in ('/perch-start', '/perch_start', '/perchstart', '/perch'):
+        try:
+            now_iso = __import__('datetime').datetime.now().isoformat()
+            with open('/tmp/perch_session.json', 'w') as f:
+                f.write(f'{{"active": true, "kind": "manual", "started": "{now_iso}", "last_activity": "{now_iso}"}}')
+            try:
+                import os as _os; _os.chmod('/tmp/perch_session.json', 0o666)
+            except Exception:
+                pass
+            send('🪶 *Perch session ON.*\n\nAll messages route to server context for the next 2h. Auto-end on inactivity (silent). Manual end: `/perch-end`.',
+                 chat_id=chat_id, markup=main_kb())
+        except Exception as e:
+            send(f'Failed to open session: {e}', chat_id=chat_id)
+        return
+
+    # /perch-end — manual session close (strict)
+    if cmd in ('/perch-end', '/perch_end', '/perchend'):
+        try:
+            with open('/tmp/perch_session.json', 'w') as f:
+                f.write('{"active": false}')
+            send('🪶 Perch session ended.', chat_id=chat_id)
+        except Exception as e:
+            send(f'Failed to close session: {e}', chat_id=chat_id)
+        return
+
     # /mute [duration]
     if cmd == '/mute':
         dur = parts[1] if len(parts) > 1 else '1h'
