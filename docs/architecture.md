@@ -2,77 +2,107 @@
 
 Canonical reference. When in doubt, follow this doc.
 
-Last revised: 2026-04-27 (Perch v2.3). Predecessor block-model doc preserved at [`architecture-blocks-legacy.md`](./architecture-blocks-legacy.md) for reference.
+Last revised: 2026-04-27 (Perch v2.4 — Connectors redesign). Predecessor block-model doc preserved at [`architecture-blocks-legacy.md`](./architecture-blocks-legacy.md) for reference.
 
 ---
 
 ## TL;DR
 
-Perch is a **5-layer system** with a per-host SQLite **brain** and modules organised in two dimensions: **Stack vs Platform** (where they operate) and **Performance / Security / Cleanup / Operations / Diagnostics / Plugin-specific** (what domain they cover).
+Perch is a **4-layer system** with a per-host SQLite **brain** and modules organised in two dimensions: **Stack vs Platform** (where they operate) and **Performance / Security / Cleanup / Operations / Diagnostics / Plugin-specific** (what domain they cover).
 
-Each domain gets its own LLM **specialist** in the Reasoning layer; the Orchestrator routes user intent to the right specialist.
+The **Connectors** layer is itself two surfaces with one sharp boundary:
+- **Surface A (Monitor + Notifier)** — push, read + Smart-Fix-only writes
+- **Surface B (AI Conversational)** — pull, strictly read-only
+
+> **The line: Conversation never mutates. Smart Fix is the only write path. The LLM is the connector — that's Perch's moat.**
+
+Each Reasoning domain gets its own LLM **specialist**; the Orchestrator routes user intent to the right specialist. See [`connectors.md`](./connectors.md) and [`monitor.md`](./monitor.md) for the connector design in depth.
+
+> **What changed in v2.4:** Old "Notifier layer 4" collapsed into Connectors → Surface A. Total layers: 5 → 4. Monitor is now its own first-class sub-layer of Connectors. New brain room: `conversations` (every chat persisted).
 
 ---
 
-## The 5 layers
+## The 4 layers
 
 ```
-╔═══════════════════════════════════════════════════════════════╗
-║  CONNECTORS                                                   ║
-║  Telegram · Slack · Claude Code MCP · CLI · HTTP API          ║
-║  Inbound webhooks: RunCloud · Cloudflare · GitHub · custom    ║
-╚════════════════════════════╤══════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════╗
+║  CONNECTORS                                                           ║
+║                                                                       ║
+║   ┌─ Surface A (server → user, push) ───────────────────────────────┐ ║
+║   │   ┌─ MONITOR  (own sub-layer, grows fastest) ───────────────┐   │ ║
+║   │   │  Probes · rules-as-data · scheduler · dedup · severity  │   │ ║
+║   │   │  Inbound webhooks: RunCloud · CF · GitHub · custom      │   │ ║
+║   │   │  Output: Event { host, type, severity, signal, ctx }    │   │ ║
+║   │   └─────────────────────────────┬───────────────────────────┘   │ ║
+║   │                                 ↓                               │ ║
+║   │   ┌─ NOTIFIER  (LLM compose · dispatch · Smart Fix) ───────┐    │ ║
+║   │   │  Out:    Telegram · Slack · Email · Webhook            │    │ ║
+║   │   │  Buttons:[Smart Fix]  [Snooze 1h]  [Ignore]            │    │ ║
+║   │   │  Writes: ONLY via Smart Fix (LLM-judged from registry) │    │ ║
+║   │   └────────────────────────────────────────────────────────┘    │ ║
+║   └─────────────────────────────────────────────────────────────────┘ ║
+║                                                                       ║
+║   ┌─ Surface B (user ↔ server, pull) — STRICTLY READ-ONLY ──────────┐ ║
+║   │  Telegram DM · Slack · Claude Code MCP · ChatGPT/Gemini plugin · │ ║
+║   │  CLI · HTTP API                                                  │ ║
+║   │  Engine: user msg → BYOK LLM → static brain → live RO modules    │ ║
+║   │  Scope: server topics only · soft tone · refuses off-topic       │ ║
+║   │  Writes: NEVER. Refuses + redirects to Smart Fix.                │ ║
+║   └──────────────────────────────────────────────────────────────────┘║
+╚════════════════════════════╤══════════════════════════════════════════╝
                              ↓
-╔═══════════════════════════════════════════════════════════════╗
-║  REASONING                                                    ║
-║  ┌─ ORCHESTRATOR (intent → specialist routing) ─────────┐     ║
-║  │   PERFORMANCE · SECURITY · CLEANUP · OPERATIONS ·    │     ║
-║  │   DIAGNOSTICS · PLUGIN-SPECIFIC ← sub-agents         │     ║
-║  └──────────────────────────────────────────────────────┘     ║
-║  + Recommend engine · Guardrails enforcer · Cost meter        ║
-╚════════════════════════════╤══════════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════╗
+║  REASONING                                                            ║
+║  ┌─ ORCHESTRATOR (intent → specialist routing) ─────────┐             ║
+║  │   PERFORMANCE · SECURITY · CLEANUP · OPERATIONS ·    │             ║
+║  │   DIAGNOSTICS · PLUGIN-SPECIFIC ← sub-agents         │             ║
+║  └──────────────────────────────────────────────────────┘             ║
+║  + Recommend engine · Guardrails enforcer · Cost meter                ║
+╚════════════════════════════╤══════════════════════════════════════════╝
                              ↓
-╔═══════════════════════════════════════════════════════════════╗
-║  EXECUTOR                                                     ║
-║  ┌── STACK modules (operate INSIDE the server) ─────────┐     ║
-║  │ src/modules/stack/wordpress/{performance,security,   │     ║
-║  │   cleanup,operations,diagnostics,plugins}/           │     ║
-║  │ src/modules/stack/{nodejs,laravel,static}/  (future) │     ║
-║  │ via SSH + CLI (wp-cli, find, openssl, …)             │     ║
-║  └──────────────────────────────────────────────────────┘     ║
-║  ┌── PLATFORM modules (operate ABOVE the server) ───────┐     ║
-║  │ src/modules/platform/{runcloud,hetzner,cloudflare,   │     ║
-║  │   github}/                                           │     ║
-║  │ via REST APIs                                        │     ║
-║  └──────────────────────────────────────────────────────┘     ║
-║  Every module: read-only audit + (gated) mutating actions     ║
-║  Always: log to BRAIN.actions; check BRAIN.guardrails first   ║
-╚═══════════╤════════════════════════════════════╤══════════════╝
-            ↓                                    ↑
-╔═══════════════════════════════╗  ╔═══════════════════════════════╗
-║ NOTIFIER  (passive, push)     ║  ║ BRAIN  (~/.perch/brain.db)    ║
-║ Cron probes · Health monitors ║◄─║ Logical ROOMS:                ║
-║ Alert dispatcher · Dedup      ║  ║   secrets · guardrails ·      ║
-║ Out: Telegram · Slack ·       ║  ║   problems · actions ·        ║
-║      Email · Webhook          ║──►║   knowledge · webapps ·       ║
-║ Never mutates. Only watches.  ║  ║   incidents · timeseries ·    ║
-╚═══════════════════════════════╝  ║   audit_log                   ║
-                                   ╚═══════════════════════════════╝
+╔═══════════════════════════════════════════════════════════════════════╗
+║  EXECUTOR                                                             ║
+║  ┌── STACK modules (operate INSIDE the server) ─────────┐             ║
+║  │ src/modules/stack/wordpress/{performance,security,   │             ║
+║  │   cleanup,operations,diagnostics,plugins}/           │             ║
+║  │ src/modules/stack/{nodejs,laravel,static}/  (future) │             ║
+║  │ via SSH + CLI (wp-cli, find, openssl, …)             │             ║
+║  └──────────────────────────────────────────────────────┘             ║
+║  ┌── PLATFORM modules (operate ABOVE the server) ───────┐             ║
+║  │ src/modules/platform/{runcloud,hetzner,cloudflare,   │             ║
+║  │   github}/                                           │             ║
+║  │ via REST APIs                                        │             ║
+║  └──────────────────────────────────────────────────────┘             ║
+║  Every module: read-only audit + (gated) mutating actions             ║
+║  Always: log to BRAIN.actions; check BRAIN.guardrails first           ║
+╚════════════════════════════╤══════════════════════════════════════════╝
+                             ↓
+╔═══════════════════════════════════════════════════════════════════════╗
+║ BRAIN  (~/.perch/brain.db)                                            ║
+║ Logical ROOMS:                                                        ║
+║   secrets · guardrails · problems · actions · knowledge · webapps ·   ║
+║   incidents · timeseries · audit_log · conversations  ← v2.4          ║
+╚═══════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
 
 ## Layer responsibilities
 
-| Layer | Owns | Doesn't own |
-|---|---|---|
-| **Connectors** | Inbound auth, payload shape, channel-specific UX | What to do with the request |
-| **Reasoning** | Intent → plan, ranking, guardrail enforcement, LLM calls | Direct shell/SSH; brain writes |
-| **Executor** | Modules + their audit/mutate functions, SSH/API execution | Deciding when to run; alerting |
-| **Notifier** | Cron probes, alert routing, dedup. **Read-only**, **push-only** | Mutations; planning; user input |
-| **Brain** | All persistent state in named "rooms". Encrypted secrets | Logic. Just storage + query API |
+| Layer | Sub-layer | Owns | Doesn't own |
+|---|---|---|---|
+| **Connectors** | **Monitor** (Surface A) | Probes · rules-as-data · scheduler · dedup · severity · inbound webhooks. Emits typed `Event`. | LLM calls · message composition · writes |
+| **Connectors** | **Notifier** (Surface A) | LLM compose · channel dispatch · Smart Fix runner · button callbacks | What to watch · when to fire |
+| **Connectors** | **AI Conversational** (Surface B) | User msg routing · BYOK LLM · read-only module orchestration · scope-locking · chat persistence | Mutations of any kind |
+| **Reasoning** | — | Intent → plan, ranking, guardrail enforcement, LLM calls for specialists | Direct shell/SSH · brain writes |
+| **Executor** | — | Modules + their audit/mutate functions · SSH/API execution | Deciding when to run · alerting |
+| **Brain** | — | All persistent state in named "rooms" · encrypted secrets | Logic. Just storage + query API |
 
-Hard boundary: **Notifier never mutates. Executor never alerts directly.**
+Hard boundaries:
+- **Conversation never mutates.** Surface B refuses every write and redirects to Smart Fix.
+- **Smart Fix is the only write path** from Connectors. LLM-judged, registry-bounded, guardrails-checked.
+- **Monitor never calls LLMs.** It emits structured Events; Notifier prose-ifies.
+- **Executor never alerts directly.** Notifier owns dispatch.
 
 ---
 
@@ -199,6 +229,7 @@ The brain is one SQLite file (`~/.perch/brain.db`) organised as logical "rooms."
 | 🚨 `incidents` | Open/ack/resolved with timeline + linked problems | Notifier (don't re-alert), Reasoning (postmortem) |
 | 📊 `timeseries` | Disk %, response time, plugin count over time | Notifier (trend alerts), Reasoning (capacity planning) |
 | 📜 `audit_log` | Immutable trail of every Perch decision (who, what, why, outcome) | Compliance, debugging |
+| 💬 `conversations` | Every chat turn (msg, reply, tool calls, tokens) scoped per host. **Added v2.4.** | Surface B (load context next turn); Notifier (knows past chats when composing) |
 
 See [`brain.md`](./brain.md) for room API + schema. See [`guardrails.md`](./guardrails.md) for rule syntax.
 
@@ -240,26 +271,35 @@ See [`guardrails.md`](./guardrails.md) for full syntax + built-in rules.
 
 ---
 
-## End-to-end request flow (worked example)
+## End-to-end flows (two worked examples — one per surface)
 
-User in Telegram: *"clean up images on startupcooking.net"*
+### Flow A — Surface A (Monitor → Notifier → Smart Fix)
 
-1. **Connector** (Telegram) parses, posts to `POST /api/recommend-or-do`.
-2. **Reasoning → Orchestrator** classifies intent → routes to **Performance specialist**.
-3. **Specialist** queries `BRAIN.webapps` for "startupcooking.net" → resolves host, user, wp-path.
-4. **Specialist** queries `BRAIN.knowledge` for prior performance work on this host (e.g. "pngquant @75-90 saved 49.4% last time").
-5. **Specialist** plans: "skip baseline audit (recent), jump to `wp.images_compress_bulk_start`."
-6. **Reasoning → Guardrails** enforces: tool is mutating + host is `prod` → emit "This will modify ~50K files on prod. Reply CONFIRM."
-7. User replies CONFIRM.
-8. **Executor** invokes `startBulkCompression`, opens SSH, launches tmux job, returns `jobId`.
-9. **Executor** writes to `BRAIN.actions`.
-10. **Reasoning** answers: "Job started. I'll ping you when done."
-11. **Notifier** sees new action → schedules a status probe.
-12. 3h later — Notifier dispatches "24.6 GB freed" to Telegram, writes outcome to `BRAIN.actions`.
-13. **Brain LLM hooks** extract facts into `knowledge` ("startupcooking.net's PNG savings ratio: 49.4%, run-3").
-14. Next time same user says "clean again" — Specialist sees prior knowledge, jumps straight to action.
+`startupcooking.net` disk crosses 95%.
 
-User never sees layers. Sees a competent ops assistant getting smarter.
+1. **Monitor → `disk` probe** runs (5m interval), measures 96%, matches rule `disk-critical` → emits `Event { host: startupcooking.net, type: disk.critical, severity: critical, signal: 96, raw: {...}, context: { related_incidents: [...] } }`.
+2. **Monitor** writes to `BRAIN.incidents` (status=open) and `BRAIN.timeseries`.
+3. **Notifier → composer** reads Event + brain (incidents/knowledge/webapps/conversations) → BYOK LLM drafts: *"Disk 96% on startupcooking.net. ~5 GB orphan media in `/uploads/2024/` — past Smart Fix freed 24 GB safely. Want me to do the same?"*
+4. **Notifier → dispatcher** sends Telegram card with `[Smart Fix] [Snooze 1h] [Ignore]`.
+5. User taps `Smart Fix`.
+6. **Smart Fix runner** → LLM picks `wp.cleanup_media_orphans_apply` from registry → **Guardrails enforcer** checks (host=prod, action allowed, has rollback) → "Perching..." status posted.
+7. **Executor** runs the action via SSH, logs to `BRAIN.actions`.
+8. **Notifier** reports outcome: *"Done. Freed 5.2 GB. Disk now 78%."*
+9. **Brain LLM hooks** extract facts into `knowledge` ("orphan-media pattern works on startupcooking.net, run-2").
+
+### Flow B — Surface B (AI Conversational, READ-ONLY)
+
+User in same Telegram chat: *"why was my site slow yesterday?"*
+
+1. **Surface B router** loads recent context from `BRAIN.conversations` (host-scoped).
+2. **BYOK LLM** reads static brain first (incidents from yesterday + recent timeseries) → judges "I have enough" → answers conversationally: *"At 14:30 IST, php-fpm pool saturated for 4 minutes. Notifier auto-restarted it. Want me to pull the access logs from that window?"*
+3. User: *"yes pull logs"*
+4. LLM judges this needs live read → calls `wp.diagnostics_errors` (read-only) → summarises.
+5. User: *"delete those error logs"*
+6. **`refuse-write.ts`** intercepts: *"I can't write from chat. Smart Fix can rotate logs — want me to surface a card, or run it via CLI?"*
+7. Every turn persisted to `BRAIN.conversations`.
+
+User never sees layers. Sees a competent ops assistant getting smarter — and one that refuses to fuck up their server from chat.
 
 ---
 
@@ -277,48 +317,60 @@ User never sees layers. Sees a competent ops assistant getting smarter.
 
 ---
 
-## What's MATURE today
+## What's MATURE today (v2.3 shipped)
 
-- 5-layer separation
+- Layer separation (now 4-layer post-v2.4 design lock)
 - Module pattern (audit + gated mutating, log to brain)
 - SSH + Vault + Brain core foundations
 - HTTP API with Bearer + rate limit + allowlist
 - 22 WordPress capabilities organised into 6 sub-sub-module domains
 - RunCloud API wrapper
-- LLM-judged static-vs-dynamic intent (in bot.py)
-- Monitor cron with Telegram + Slack mirroring
+- LLM-judged static-vs-dynamic intent (in `bot.py` — to be ported into Surface B)
+- `monitor.sh` cron with Telegram + Slack mirroring (to be ported into `src/connectors/monitor/`)
 
-## What's MISSING (v2.3 → v2.5)
+## What's DESIGNED but NOT yet implemented (v2.4 design lock)
 
-- ❌ Inbound webhooks (RunCloud/Cloudflare/GitHub events into Perch)
-- ❌ Approval workflow (2nd-human ack via Telegram for high-stakes)
+- 🟡 Connectors split into Monitor + Notifier + AI (docs landed, code follows)
+- 🟡 Monitor as own sub-layer with rules-as-data + scheduler + dedup
+- 🟡 Smart Fix as the only write path (LLM-judged, registry, learning loop)
+- 🟡 Surface B strict-read-only with `refuse-write.ts`
+- 🟡 BYOK LLM (Gemini reference) wired through `src/connectors/ai/llm/`
+- 🟡 `BRAIN.conversations` room + per-host chat persistence
+- 🟡 Bot personality (server-scope-locked, soft tone) via `system-prompt.ts`
+
+## What's MISSING (v2.4 → v2.6)
+
+- ❌ Inbound webhooks (RunCloud/Cloudflare/GitHub) — designed for Monitor, not built
+- ❌ Smart Fix promotion gate (nightly LLM proposes new candidates)
 - ❌ Cost meter (LLM API call tracking per session/host)
 - ❌ Brain backup/restore (export/import of `brain.db`)
-- ❌ Audit log room (immutable trail)
-- ❌ Guardrails-as-data (today scattered in code)
+- ❌ Guardrails-as-data (today scattered in code; Monitor rules will share this store)
 - ❌ Cross-host fleet view
-- ❌ Specialist LLM personas (scaffolds in this PR; full implementation v2.4)
+- ❌ Specialist LLM personas (scaffolds shipped in v2.3; full implementation pending)
 
 ---
 
 ## Files for new contributors / agents (read in order)
 
 1. [`architecture.md`](./architecture.md) — this file
-2. [`specialists.md`](./specialists.md) — sub-agent design
-3. [`brain.md`](./brain.md) — room schemas
-4. [`guardrails.md`](./guardrails.md) — rule syntax
-5. [`blocks/wordpress-images.md`](./blocks/wordpress-images.md) — case study of a complete module pair
-6. `src/core/` — read first: `ssh-enhanced.ts`, `brain.ts`, `vault.ts`
-7. `src/api/server.ts` — every endpoint
-8. `src/modules/stack/wordpress/<domain>/<feature>.ts` — copy this pattern when adding modules
+2. [`connectors.md`](./connectors.md) — Connectors layer (Surface A + B)
+3. [`monitor.md`](./monitor.md) — Monitor sub-layer (probes, rules, growth plan)
+4. [`specialists.md`](./specialists.md) — sub-agent design
+5. [`brain.md`](./brain.md) — room schemas (incl. `conversations`)
+6. [`guardrails.md`](./guardrails.md) — rule syntax (also used by Monitor rules-as-data)
+7. [`blocks/wordpress-images.md`](./blocks/wordpress-images.md) — case study of a complete module pair
+8. `src/core/` — read first: `ssh-enhanced.ts`, `brain.ts`, `vault.ts`
+9. `src/api/server.ts` — every endpoint (will become `src/connectors/ai/channels/http-api.ts` in v2.4 implementation)
+10. `src/modules/stack/wordpress/<domain>/<feature>.ts` — copy this pattern when adding modules
 
 ---
 
 ## When to revise this document
 
-- Adding a layer (rare; 5 should stay stable)
+- Adding or removing a layer (rare; 4 should stay stable)
 - Adding a brain room
-- Changing the guardrails contract
-- Reorganising connectors or executor sublayers
+- Changing the guardrails contract or Monitor rules contract
+- Reorganising Connectors sub-layers (Monitor / Notifier / AI) or Executor sub-layers
+- Changing the Surface A ↔ Surface B boundary (currently: conversation never writes, Smart Fix is the only write path)
 
 The diagram + layer responsibilities are canonical. Every other doc should be consistent with this one.
