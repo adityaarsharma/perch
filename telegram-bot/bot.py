@@ -81,14 +81,20 @@ def answer_cb(cb_id, text="✓"):
 
 # ── fix-server ------------------------------------------------------------------
 
-def call_fix(action: str) -> tuple[bool, str]:
-    """POST /<action> to fix-server. Returns (ok, output_text)."""
+def call_fix(action: str, body: dict | None = None) -> tuple[bool, str]:
+    """POST /<action> to fix-server. Returns (ok, output_text).
+
+    `body` is optional JSON payload — used by /smart-fix to pass the alert_id.
+    """
     try:
-        r = requests.post(
-            f"{FIX_URL}/{action}",
-            headers={"Authorization": f"Bearer {FIX_TOKEN}"},
-            timeout=60,
-        )
+        kwargs: dict = {
+            "headers": {"Authorization": f"Bearer {FIX_TOKEN}"},
+            "timeout": 60,
+        }
+        if body is not None:
+            kwargs["json"] = body
+            kwargs["headers"]["Content-Type"] = "application/json"
+        r = requests.post(f"{FIX_URL}/{action}", **kwargs)
         if r.status_code == 404:
             return False, f"No script registered for `/{action}`."
         try:
@@ -192,7 +198,22 @@ def handle_callback(cb):
         edit(mid, f"💤 *Snoozed.* Alerts paused until {until}.")
         return
 
-    # 3. Smart Fix — POST /<action> to fix-server.
+    # 3. Smart Fix — unified router (v2.5).
+    # New shape: callback_data = "perch:smart-fix:<alert_id>" → POST /smart-fix
+    # with body {"alert_id": "<alert_id>"}. fix-server's SMART_FIX_REGISTRY
+    # picks the safe action.
+    # Old shape kept for backward compat: bare action names (`fix-nginx` etc.)
+    # POST directly to /<action>.
+    if payload.startswith("smart-fix:"):
+        alert_id = payload[len("smart-fix:"):] or "unknown"
+        edit(mid, f"⏳ *Smart Fix* running… (alert: `{alert_id}`)")
+        ok, out = call_fix("smart-fix", body={"alert_id": alert_id})
+        icon = "✅" if ok else "❌"
+        snippet = (out or "(no output)")[:3500]
+        edit(mid, f"{icon} *Smart Fix* {'done' if ok else 'failed'}\n\n```\n{snippet}\n```")
+        return
+
+    # Legacy: direct action route (kept so old pinned alerts still work).
     edit(mid, f"⏳ *Smart Fix* running… (`{payload}`)")
     ok, out = call_fix(payload)
     icon = "✅" if ok else "❌"

@@ -165,8 +165,11 @@ send_alert() {
 # For alerts where no safe Smart Fix exists, BTN_ACK_ONLY drops the fix button.
 
 BTN_3() {
-  local action="${1:-fix}"
-  printf '[[{"text":"🔧 Smart Fix","callback_data":"perch:%s"},{"text":"💤 Snooze 1h","callback_data":"perch:mute_1h"},{"text":"✅ Ack","callback_data":"perch:ack"}]]' "$action"
+  # Unified Smart Fix shape (v2.5). Caller passes the alert_id (rule_id);
+  # the smart router on fix-server picks the action from SMART_FIX_REGISTRY.
+  # User always sees "🔧 Smart Fix" — internal routing is invisible.
+  local alert="${1:-unknown}"
+  printf '[[{"text":"🔧 Smart Fix","callback_data":"perch:smart-fix:%s"},{"text":"💤 Snooze 1h","callback_data":"perch:mute_1h"},{"text":"✅ Ack","callback_data":"perch:ack"}]]' "$alert"
 }
 
 BTN_ACK_ONLY='[[{"text":"💤 Snooze 1h","callback_data":"perch:mute_1h"},{"text":"✅ Ack","callback_data":"perch:ack"}]]'
@@ -194,7 +197,7 @@ Last errors:
 ${error_summary}
 \`\`\`"
 
-    send_alert "nginx_down" "critical" "Web server is down" "$body" "$(BTN_3 fix-nginx)"
+    send_alert "nginx_down" "critical" "Web server is down" "$body" "$(BTN_3 nginx_down)"
   fi
 }
 
@@ -216,7 +219,7 @@ rule_php_fpm() {
     listing="$(printf -- '- %s\n' "${down_services[@]}")"
     send_alert "php_fpm_down" "critical" "PHP-FPM is down" \
       "PHP-FPM service(s) are not running:\n${listing}\n\nWordPress and PHP sites cannot serve requests." \
-      "$(BTN_3 fix-php-fpm)"
+      "$(BTN_3 php_fpm_down)"
   fi
 }
 
@@ -237,7 +240,7 @@ rule_database() {
   if [ "$status" != "active" ]; then
     send_alert "mysql_down" "critical" "Database is down" \
       "${svc} is *${status}*. WordPress, Laravel, and any DB-backed site cannot run.\n\nThis often happens after an out-of-memory event. I can restart it for you." \
-      "$(BTN_3 fix-mysql)"
+      "$(BTN_3 mysql_down)"
   fi
 }
 
@@ -256,11 +259,11 @@ rule_disk() {
     top="$(du -sh /home/* /var/log /tmp 2>/dev/null | sort -rh | head -5 | awk '{printf "  %s  %s\n",$1,$2}')"
     send_alert "disk_critical" "critical" "Disk almost full ($pct%)" \
       "$used / $total used. Sites will start failing soon — log writes fail, MySQL can't write, uploads break.\n\nTop offenders:\n\`\`\`\n${top}\n\`\`\`" \
-      "$(BTN_3 clear-logs)"
+      "$(BTN_3 disk_critical)"
   elif [ "$pct" -ge "$RULE_DISK_HIGH" ]; then
     send_alert "disk_high" "warning" "Disk getting full ($pct%)" \
       "$used / $total used. Time to clean up old logs and rotate backups." \
-      "$(BTN_3 clear-logs)"
+      "$(BTN_3 disk_high)"
   elif [ "$pct" -ge "$RULE_DISK_WARN" ]; then
     send_alert "disk_warn" "info" "Disk usage rising ($pct%)" \
       "$used / $total used. Just keeping an eye on this — no action needed yet." \
@@ -285,11 +288,11 @@ rule_ram() {
             | awk '{printf "  %dMB  %s\n",$1/1024,$2}')"
     send_alert "ram_critical" "critical" "Memory critical ($pct%)" \
       "${used}MB / ${total}MB used. The kernel is about to start killing processes (OOM).\n\nTop consumers:\n\`\`\`\n${top}\n\`\`\`" \
-      "$(BTN_3 fix)"
+      "$(BTN_3 ram_critical)"
   elif [ "$pct" -ge "$RULE_RAM_WARN" ]; then
     send_alert "ram_warn" "warning" "Memory pressure ($pct%)" \
       "${used}MB / ${total}MB used. Consider restarting heavy processes (PHP-FPM, PM2)." \
-      "$(BTN_3 fix)"
+      "$(BTN_3 ram_warn)"
   fi
 }
 
@@ -310,11 +313,11 @@ rule_cpu_load() {
                 | awk '{printf "  %s%%  %s\n",$1,$2}')"
     send_alert "cpu_critical" "critical" "CPU overloaded ($pct%)" \
       "Load average $load1 with only $cores core(s).\n\nTop processes:\n\`\`\`\n${top_cpu}\n\`\`\`" \
-      "$(BTN_3 fix)"
+      "$(BTN_3 cpu_critical)"
   elif [ "$pct" -ge "$RULE_LOAD_PCT_WARN" ]; then
     send_alert "cpu_warn" "warning" "CPU under load ($pct%)" \
       "Load average $load1 across $cores core(s). Could be a traffic spike or runaway process." \
-      "$(BTN_3 fix)"
+      "$(BTN_3 cpu_warn)"
   fi
 }
 
@@ -342,7 +345,7 @@ rule_orphans() {
   if [ "$total" -gt "$RULE_ORPHAN_WARN" ]; then
     send_alert "orphans" "warning" "Stuck/zombie processes: $total" \
       "Detected ${zombies} zombie(s) (state=Z) + ${stuck} stuck mail/sudo loop(s). Smart Fix reaps them safely (it does NOT touch nginx-rc, php-fpm, mariadb, redis, dockerd or any legit RunCloud service)." \
-      "$(BTN_3 fix)"
+      "$(BTN_3 orphans)"
   fi
 }
 
@@ -357,7 +360,7 @@ rule_failed_services() {
     local list; list="$(printf -- '- %s\n' $failed)"
     send_alert "failed_svc" "warning" "Failed services" \
       "These systemd units are in a failed state:\n\`\`\`\n${list}\n\`\`\`" \
-      "$(BTN_3 fix)"
+      "$(BTN_3 failed_svc)"
   fi
 }
 
@@ -386,11 +389,11 @@ rule_ssl_expiry() {
     if [ "$days_left" -le "$RULE_SSL_DAYS_CRIT" ]; then
       send_alert "ssl_${site}" "critical" "SSL expiring soon: $site" \
         "Certificate for *${site}* expires in *${days_left} day(s)*. Browser warnings will start showing." \
-        "$(BTN_3 renew-ssl)"
+        "$(BTN_3 ssl_critical)"
     elif [ "$days_left" -le "$RULE_SSL_DAYS_WARN" ]; then
       send_alert "ssl_${site}_warn" "warning" "SSL renewal due: $site" \
         "Certificate for ${site} expires in ${days_left} days. Time to renew." \
-        "$(BTN_3 renew-ssl)"
+        "$(BTN_3 ssl_expiring)"
     fi
   done
 }
@@ -414,11 +417,11 @@ rule_http_availability() {
     if [ "$code" = "0" ]; then
       send_alert "http_${site}" "critical" "Site unreachable: $site" \
         "Could not connect to https://${site}/ or http://${site}/. DNS, firewall, or web server may be down." \
-        "$(BTN_3 fix-nginx)"
+        "$(BTN_3 site_down)"
     elif [ "$code" -ge 500 ] && [ "$code" -lt 600 ]; then
       send_alert "http_${site}_${code}" "critical" "Site returning $code: $site" \
         "https://${site}/ returns HTTP $code.\n\nLikely cause: PHP fatal error, plugin conflict, or stack overflow. I can pull the error log for you." \
-        "$(BTN_3 fix-php-fpm)"
+        "$(BTN_3 site_5xx)"
     fi
   done
 }
@@ -443,7 +446,7 @@ rule_custom_ports() {
     local list; list="$(printf -- '- 127.0.0.1:%s\n' "${down[@]}")"
     send_alert "ports_down" "warning" "Custom ports unreachable" \
       "These ports are not listening on localhost:\n\`\`\`\n${list}\n\`\`\`\nApps bound to these ports may have crashed." \
-      "$(BTN_3 fix)"
+      "$(BTN_3 ports_down)"
   fi
 }
 

@@ -107,6 +107,52 @@ ROUTES = {
     '/clear-logs':   'clear-logs.sh',
 }
 
+# ── Unified Smart Fix router (v2.5) ──────────────────────────────────────────
+# One endpoint, one algorithm. Caller posts {alert_id} → router picks the
+# safest fitting action from this registry. Removes the user-facing distinction
+# between fix-nginx / clear-logs / fix-n8n etc. — the Telegram button always
+# says "Smart Fix"; the router decides what that means for THIS alert.
+#
+# `None` = no auto-fix exists for that alert type (Smart Fix returns a friendly
+# "no safe auto-fix; investigate via Claude Code MCP" message instead of
+# silently doing nothing or worse, doing the wrong thing).
+
+SMART_FIX_REGISTRY = {
+    # Service crashes
+    'nginx_down':      'fix-nginx.sh',
+    'site_down':       'fix-nginx.sh',
+    'php_fpm_down':    'fix-php-fpm.sh',
+    'mysql_down':      'fix-mysql.sh',
+    'mysql_oom':       'fix-mysql.sh',
+    'service_down':    'fix-services.sh',
+    'ports_down':      'fix-services.sh',
+
+    # Disk pressure → log truncation
+    'disk_high':       'clear-logs.sh',
+    'disk_warn':       'clear-logs.sh',
+    'disk_critical':   'clear-logs.sh',
+
+    # Memory / load → smart-fix.sh runs the multi-check (zombies, log trim, etc.)
+    'ram_high':        'smart-fix.sh',
+    'ram_critical':    'smart-fix.sh',
+    'load_high':       'smart-fix.sh',
+
+    # SSL expiry
+    'ssl_expiring':    'renew-ssl.sh',
+    'ssl_critical':    'renew-ssl.sh',
+
+    # Process health → safe zombie reaper inside smart-fix.sh
+    'orphans':         'smart-fix.sh',
+
+    # 5xx / generic site degradation
+    'site_5xx':        'smart-fix.sh',
+
+    # No safe auto-fix for these — router returns explanatory message
+    'fail2ban_spike':  None,    # security event, manual review only
+    'backup_age':      None,    # needs RunCloud-side action
+    'disk_growth':     None,    # informational, not actionable
+}
+
 class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         # SECURITY [H4]: constant-time auth comparison to defeat timing attacks.
@@ -119,12 +165,58 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(b'{"error":"Unauthorized"}')
             return
 
-        script = ROUTES.get(self.path)
-        if not script:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(json.dumps({'error': f'Unknown endpoint: {self.path}'}).encode())
-            return
+        # ── Unified Smart Fix router ─────────────────────────────────────────
+        # POST /smart-fix with body {"alert_id": "<id>"} or path "/smart-fix/<id>".
+        # The router consults SMART_FIX_REGISTRY and dispatches the right script.
+        # Single endpoint replaces the user-visible variety of /fix-nginx,
+        # /clear-logs, /renew-ssl, etc. (those still exist for direct access
+        # but are not exposed in the Telegram surface anymore).
+        smart_alert = None
+        if self.path == '/smart-fix':
+            try:
+                length = int(self.headers.get('Content-Length', '0') or '0')
+                if 0 < length < 4096:
+                    body = json.loads(self.rfile.read(length).decode('utf-8', errors='ignore'))
+                    smart_alert = str(body.get('alert_id') or body.get('alert') or '').strip()
+            except Exception:
+                smart_alert = ''
+        elif self.path.startswith('/smart-fix/'):
+            smart_alert = self.path[len('/smart-fix/'):].strip()
+
+        if smart_alert is not None:
+            if not smart_alert:
+                smart_alert = 'unknown'
+            mapped = SMART_FIX_REGISTRY.get(smart_alert, 'smart-fix.sh')
+            if mapped is None:
+                # Known alert with no safe auto-fix — explain instead of guessing.
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    'output': (
+                        f"No safe auto-fix exists for `{smart_alert}`. "
+                        "Investigate via Claude Code MCP / `perch` CLI / direct HTTP API. "
+                        "This alert needs human judgment."
+                    ),
+                    'ok': True,
+                    'smart_fix': {'alert': smart_alert, 'action': None, 'reason': 'no_safe_action'},
+                }).encode())
+                return
+            script = mapped
+            log_action_to_brain(
+                action_type=f'smart_fix.{smart_alert}',
+                target='localhost',
+                args={'alert_id': smart_alert, 'mapped_script': script},
+                result={},
+                ok=True,
+            )
+        else:
+            script = ROUTES.get(self.path)
+            if not script:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(json.dumps({'error': f'Unknown endpoint: {self.path}'}).encode())
+                return
 
         script_path = SCRIPTS / script
         if not script_path.exists():
