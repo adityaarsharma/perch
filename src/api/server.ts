@@ -567,11 +567,49 @@ async function callGemini(opts: {
   contents: GeminiContent[];
 }): Promise<{ reply: string; raw: unknown }> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(opts.model)}:generateContent?key=${encodeURIComponent(opts.apiKey)}`;
-  const body = {
-    systemInstruction: { parts: [{ text: opts.systemInstruction }] },
-    contents: opts.contents,
+
+  // Gemma rejects `systemInstruction` with 400 ("Developer instruction not
+  // enabled"). Fold it into the first user turn for any gemma-* model.
+  // Gemini path stays untouched.
+  const isGemma = opts.model.startsWith("gemma");
+  let bodyContents = opts.contents;
+  let bodySystem: { parts: Array<{ text: string }> } | undefined =
+    { parts: [{ text: opts.systemInstruction }] };
+
+  if (isGemma) {
+    bodySystem = undefined;
+    if (opts.systemInstruction) {
+      const folded: GeminiContent[] = [...opts.contents];
+      if (folded.length > 0 && folded[0].role === "user") {
+        const firstParts = folded[0].parts ?? [];
+        const first = firstParts[0];
+        if (first && typeof first.text === "string") {
+          folded[0] = {
+            role: "user",
+            parts: [
+              { text: opts.systemInstruction + "\n\n" + first.text },
+              ...firstParts.slice(1),
+            ],
+          };
+        } else {
+          folded[0] = {
+            role: "user",
+            parts: [{ text: opts.systemInstruction }, ...firstParts],
+          };
+        }
+      } else {
+        folded.unshift({ role: "user", parts: [{ text: opts.systemInstruction }] });
+      }
+      bodyContents = folded;
+    }
+  }
+
+  const body: Record<string, unknown> = {
+    contents: bodyContents,
     generationConfig: { temperature: 0.6, maxOutputTokens: 1024, topP: 0.9 },
   };
+  if (bodySystem) body.systemInstruction = bodySystem;
+
   const r = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
