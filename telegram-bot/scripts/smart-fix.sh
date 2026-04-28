@@ -72,16 +72,29 @@ if [ "$DISK_PCT" -gt 88 ]; then
   fi
 fi
 
-# --- Check orphan processes ---
-ORPHAN_N=$(ps -eo ppid,comm 2>/dev/null \
-  | awk '$1==1 && $2!="init" && $2!="systemd" && $2!="(sd-pam)" && $2!="dbus-daemon"' \
-  | wc -l | tr -d ' ')
-if [ "$ORPHAN_N" -gt 15 ]; then
-  ISSUES+=("${ORPHAN_N} orphan processes (PPID=1)")
-  ps -eo ppid,pid,comm 2>/dev/null \
-    | awk '$1==1 && $3!="init" && $3!="systemd" && $3!="(sd-pam)"' \
-    | awk '{print $2}' | xargs kill -9 2>/dev/null || true
-  FIXES+=("Killed ${ORPHAN_N} orphan processes")
+# --- Reap PROVEN-DEAD processes only (SAFE replacement, see commit msg) ---
+# Two narrow categories:
+#   1. Actual zombies (state=Z) — already exited, just need parent reap.
+#   2. Known stuck-loop signatures (sudo cat / sendmail -t / postdrop -r
+#      reparented to PID 1) — fallout from the perch-api timeout bug.
+# We deliberately do NOT kill arbitrary PPID=1 processes. On a RunCloud box
+# that would include nginx-rc, php-fpm masters, mariadb, redis, dockerd,
+# supervisord, fail2ban, the RunCloud agent — Smart Fix would crash the box.
+
+ZOMBIE_PIDS=$(ps -eo state,pid --no-headers 2>/dev/null | awk '$1=="Z" {print $2}')
+if [ -n "${ZOMBIE_PIDS:-}" ]; then
+  ZOMBIE_N=$(printf '%s\n' "$ZOMBIE_PIDS" | wc -l | tr -d ' ')
+  ISSUES+=("${ZOMBIE_N} zombie processes")
+  printf '%s\n' "$ZOMBIE_PIDS" | xargs -r kill -9 2>/dev/null || true
+  FIXES+=("Reaped ${ZOMBIE_N} zombies")
+fi
+
+STUCK_PIDS=$(pgrep -f 'sudo cat |sendmail -t|postdrop -r' 2>/dev/null | head -100)
+if [ -n "${STUCK_PIDS:-}" ]; then
+  STUCK_N=$(printf '%s\n' "$STUCK_PIDS" | wc -l | tr -d ' ')
+  ISSUES+=("${STUCK_N} stuck sudo/sendmail/postdrop loops")
+  printf '%s\n' "$STUCK_PIDS" | xargs -r kill -9 2>/dev/null || true
+  FIXES+=("Killed ${STUCK_N} stuck loops (mail/postdrop)")
 fi
 
 # --- Report ---
