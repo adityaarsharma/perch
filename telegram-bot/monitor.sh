@@ -323,14 +323,25 @@ rule_cpu_load() {
 # ────────────────────────────────────────────────────────────────────────────────
 
 rule_orphans() {
-  local count
-  count="$(ps -eo ppid,comm 2>/dev/null \
-           | awk '$1==1 && $2!="init" && $2!="systemd" && $2!="(sd-pam)" && $2!="dbus-daemon"' \
-           | wc -l | tr -d ' ')"
+  # Only count ACTUAL zombies (state=Z) and known stuck-loop signatures
+  # (sudo cat / sendmail -t / postdrop -r leftovers from the perch-api
+  # timeout bug we fixed earlier). The previous version counted any PPID=1
+  # process not in a 4-name whitelist — on a RunCloud box that included
+  # nginx-rc, php{ver}-fpm-rc, mariadb, redis, dockerd, RunCloud agent,
+  # supervisord, fail2ban, etc. all of which are legit. Pure false-positive
+  # spam.
+  local zombies
+  zombies="$(ps -eo state --no-headers 2>/dev/null | awk '$1=="Z"' | wc -l | tr -d ' ')"
+  zombies="${zombies:-0}"
 
-  if [ "$count" -gt "$RULE_ORPHAN_WARN" ]; then
-    send_alert "orphans" "warning" "Orphan processes: $count" \
-      "$count processes are reparented to PID 1. Usually safe to kill — they're often crashed/abandoned children." \
+  local stuck
+  stuck="$(pgrep -f 'sudo cat |sendmail -t|postdrop -r' 2>/dev/null | wc -l | tr -d ' ')"
+  stuck="${stuck:-0}"
+
+  local total=$((zombies + stuck))
+  if [ "$total" -gt "$RULE_ORPHAN_WARN" ]; then
+    send_alert "orphans" "warning" "Stuck/zombie processes: $total" \
+      "Detected ${zombies} zombie(s) (state=Z) + ${stuck} stuck mail/sudo loop(s). Smart Fix reaps them safely (it does NOT touch nginx-rc, php-fpm, mariadb, redis, dockerd or any legit RunCloud service)." \
       "$(BTN_3 fix)"
   fi
 }
