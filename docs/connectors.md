@@ -3,7 +3,7 @@
 **Layer 1** of the 5-layer stack. The top — where Perch talks to you.
 
 Last revised: 2026-04-27 (Perch v2.5 design lock).
-Sister docs: [`architecture.md`](./architecture.md) · [`monitor.md`](./monitor.md) · [`brain.md`](./brain.md) · [`guardrails.md`](./guardrails.md) · [`specialists.md`](./specialists.md)
+Sister docs: [`architecture.md`](./architecture.md) · [`smart-fix.md`](./smart-fix.md) · [`monitor.md`](./monitor.md) · [`brain.md`](./brain.md) · [`guardrails.md`](./guardrails.md) · [`specialists.md`](./specialists.md)
 
 ---
 
@@ -126,6 +126,8 @@ Persist                 ─→  every turn → BRAIN.conversations
 - For real ops work, the user has Claude Code / ChatGPT / Gemini one tap away.
 
 ### Smart Fix — the only write path in Surface A (its own component)
+
+> **Deep dive: [`smart-fix.md`](./smart-fix.md)** — full contract, registry table, end-to-end flow walkthrough, how to extend it, hard rules, code locations. Read that if you want to actually understand or contribute to Smart Fix.
 
 Smart Fix is a **first-class component inside Surface A**, not just a button label. It is the **group-breaking automation** Perch ships — every alert across every probe lands on the same three-button shape, and the first button always says **🔧 Smart Fix**. Behind that one button is a single algorithm.
 

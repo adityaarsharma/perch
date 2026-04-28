@@ -315,6 +315,8 @@ See [`guardrails.md`](./guardrails.md) for full syntax + built-in rules.
 
 ## Smart Fix — own component inside Surface A
 
+> **Full deep-dive: [`smart-fix.md`](./smart-fix.md)** — contract, registry, walkthrough, extension recipe, hard rules, code map.
+
 Smart Fix is a first-class piece of Surface A, not just a button label. It is the **group-breaking automation** Perch ships with: every alert across every probe lands on the same three-button shape, and the first button always says **🔧 Smart Fix**. Behind that one button is a single algorithm that knows how to translate "this alert" into "this action".
 
 ### One button, one callback, one registry
@@ -464,14 +466,16 @@ User never sees layers. Sees a competent ops assistant who's safe on their phone
 
 1. [`architecture.md`](./architecture.md) — this file
 2. [`connectors.md`](./connectors.md) — Layer 1 (Surface A + Surface B)
-3. [`monitor.md`](./monitor.md) — Layer 3 (own beast; Watch + Decide tiers; probes, rules, growth plan)
-4. [`specialists.md`](./specialists.md) — Layer 2 sub-agent design
-5. [`brain.md`](./brain.md) — Layer 5 room schemas (incl. `conversations`)
-6. [`guardrails.md`](./guardrails.md) — rule syntax (used by Reasoning AND by Monitor's Decide tier)
-7. [`blocks/wordpress-images.md`](./blocks/wordpress-images.md) — case study of a complete module pair
-8. `src/core/` — read first: `ssh-enhanced.ts`, `brain.ts`, `vault.ts`
-9. `src/api/server.ts` — every endpoint (will become `src/connectors/ai-plugin/channels/http-api.ts` in v2.5 implementation)
-10. `src/modules/stack/wordpress/<domain>/<feature>.ts` — copy this pattern when adding modules
+3. [`smart-fix.md`](./smart-fix.md) — Smart Fix component (Surface A's one-button-one-algorithm contract)
+4. [`monitor.md`](./monitor.md) — Layer 3 (own beast; Watch + Decide tiers; probes, rules, growth plan)
+5. [`specialists.md`](./specialists.md) — Layer 2 sub-agent design
+6. [`brain.md`](./brain.md) — Layer 5 room schemas (incl. `conversations`)
+7. [`guardrails.md`](./guardrails.md) — rule syntax (used by Reasoning AND by Monitor's Decide tier)
+8. [`api-tools.md`](./api-tools.md) — full HTTP API tool catalog (55 tools)
+9. [`blocks/wordpress-images.md`](./blocks/wordpress-images.md) — case study of a complete module pair
+10. `src/core/` — read first: `ssh-enhanced.ts`, `brain.ts`, `vault.ts`
+11. `src/api/server.ts` — every endpoint (will become `src/connectors/ai-plugin/channels/http-api.ts` in v2.5 implementation)
+12. `src/modules/stack/wordpress/<domain>/<feature>.ts` — copy this pattern when adding modules
 
 ---
 
