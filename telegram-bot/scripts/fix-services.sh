@@ -9,7 +9,7 @@ FAILED=()
 restart_if_active() {
   local svc="$1"
   if systemctl list-units --all 2>/dev/null | grep -q " ${svc}\."; then
-    systemctl restart "$svc" 2>/dev/null && RESTARTED+=("$svc") || FAILED+=("$svc")
+    sudo systemctl restart "$svc" 2>/dev/null && RESTARTED+=("$svc") || FAILED+=("$svc")
   fi
 }
 

@@ -10,8 +10,8 @@ FIXES=()
 NGINX_UP=$(systemctl is-active "$NSVC" 2>/dev/null || echo inactive)
 if [ "$NGINX_UP" != "active" ]; then
   ISSUES+=("${NSVC} was ${NGINX_UP}")
-  if nginx-rc -t 2>&1 | grep -q "successful"; then
-    systemctl restart "$NSVC" 2>/dev/null
+  if sudo nginx-rc -t 2>&1 | grep -q "successful"; then
+    sudo systemctl restart "$NSVC" 2>/dev/null
     sleep 1
     NEW_STATUS=$(systemctl is-active "$NSVC" 2>/dev/null)
     if [ "$NEW_STATUS" = "active" ]; then
@@ -35,7 +35,7 @@ if [ -n "$MYSQL_SVC" ]; then
   MYSQL_UP=$(systemctl is-active "$MYSQL_SVC" 2>/dev/null)
   if [ "$MYSQL_UP" != "active" ]; then
     ISSUES+=("$MYSQL_SVC was $MYSQL_UP")
-    systemctl restart "$MYSQL_SVC" 2>/dev/null
+    sudo systemctl restart "$MYSQL_SVC" 2>/dev/null
     sleep 2
     NEW_MYSQL=$(systemctl is-active "$MYSQL_SVC" 2>/dev/null)
     FIXES+=("Restarted $MYSQL_SVC — now $NEW_MYSQL")
@@ -56,7 +56,7 @@ if [ "$MEM_PCT" -gt 88 ]; then
   for log in /var/log/php*rc-fpm.log; do
     [ -f "$log" ] || continue
     ver=$(basename "$log" | grep -oE 'php[0-9]+rc')
-    w=$(grep -E "max_children|reached pm|WARNING|CRITICAL" "$log" 2>/dev/null | tail -5 | \
+    w=$(sudo grep -E "max_children|reached pm|WARNING|CRITICAL" "$log" 2>/dev/null | tail -5 | \
       sed 's/.*\[pool /pool /' | sed 's/\] server reached.*/: hit max_children/' | \
       sed 's/\] WARNING:.*/: warning/' | head -3 | tr '\n' ' ')
     [ -n "$w" ] && PHP_POOL_WARN="${PHP_POOL_WARN}${ver}: ${w}| "
@@ -67,7 +67,7 @@ if [ "$MEM_PCT" -gt 88 ]; then
   PHP_FAILED=()
   while IFS= read -r unit; do
     [ -z "$unit" ] && continue
-    if systemctl restart "$unit" 2>/dev/null; then
+    if sudo systemctl restart "$unit" 2>/dev/null; then
       PHP_RESTARTED+=("$unit")
     else
       PHP_FAILED+=("$unit")

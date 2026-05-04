@@ -32,7 +32,7 @@ if [ "$STATUS" = "active" ]; then
 fi
 
 echo "Restarting $SVC..."
-if systemctl restart "$SVC" 2>&1; then
+if sudo systemctl restart "$SVC" 2>&1; then
   sleep 2
   NEW_STATUS="$(systemctl is-active "$SVC" 2>/dev/null)"
   if [ "$NEW_STATUS" = "active" ]; then

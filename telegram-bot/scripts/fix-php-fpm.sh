@@ -14,7 +14,7 @@ while IFS= read -r unit; do
   status="$(systemctl is-active "$unit" 2>/dev/null)"
   if [ "$status" != "active" ]; then
     DOWN+=("$unit:$status")
-    if systemctl restart "$unit" 2>/dev/null; then
+    if sudo systemctl restart "$unit" 2>/dev/null; then
       sleep 1
       new_status="$(systemctl is-active "$unit" 2>/dev/null)"
       if [ "$new_status" = "active" ]; then

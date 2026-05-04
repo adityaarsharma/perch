@@ -37,7 +37,7 @@ fi
 echo ""
 if $CONFIG_OK; then
   echo "Restarting ${NSVC}..."
-  systemctl restart "$NSVC" 2>&1
+  sudo systemctl restart "$NSVC" 2>&1
   sleep 1
   NEW_STATUS=$(systemctl is-active "$NSVC" 2>/dev/null)
   echo "Status: ${NEW_STATUS}"

@@ -30,15 +30,15 @@ for log in /var/log/php*rc-fpm.log; do
   svc="${ver}-fpm"
   status=$(systemctl is-active "$svc" 2>/dev/null || echo "unknown")
   echo "  ${svc}: ${status}"
-  # Warnings (last 100 log lines)
-  warns=$(tail -100 "$log" 2>/dev/null | grep -E "WARNING|CRITICAL|max_children|reached pm" | \
+  # Warnings (last 100 log lines) — use sudo tail since root-owned 0600
+  warns=$(sudo tail -100 "$log" 2>/dev/null | grep -E "WARNING|CRITICAL|max_children|reached pm" | \
     sed 's/.*\] //' | head -5)
   if [ -n "$warns" ]; then
     echo "  ⚠  Pool warnings:"
     echo "$warns" | sed 's/^/      /'
   fi
   # Last errors
-  errs=$(tail -50 "$log" 2>/dev/null | grep -iE "ERROR|FATAL" | tail -3)
+  errs=$(sudo tail -50 "$log" 2>/dev/null | grep -iE "ERROR|FATAL" | tail -3)
   if [ -n "$errs" ]; then
     echo "  ✗  Errors:"
     echo "$errs" | sed 's/^/      /'
@@ -47,53 +47,54 @@ done
 [ "$PHP_FOUND" -eq 0 ] && echo "  (no php*rc-fpm.log files found)"
 
 # --- nginx-rc Errors Per Webapp ---
+# Use 'sudo find' + 'sudo tail' since home dirs aren't world-traversable
 echo ""
 echo "-- nginx-rc Errors per Webapp --"
 ERRS_FOUND=0
-for errlog in /home/*/logs/nginx/*_error.log; do
+while IFS= read -r errlog; do
   [ -f "$errlog" ] || continue
   app=$(basename "$errlog" | sed 's/_error.log//')
-  # Count errors in tail-500 lines
-  cnt=$(tail -500 "$errlog" 2>/dev/null | grep -cE "\[error\]|\[crit\]|\[emerg\]" 2>/dev/null || echo 0)
+  cnt=$(sudo tail -500 "$errlog" 2>/dev/null | grep -cE "\[error\]|\[crit\]|\[emerg\]" 2>/dev/null || echo 0)
   [ "$cnt" -eq 0 ] && continue
   ERRS_FOUND=1
   echo "  ${app}: ${cnt} errors"
-  # Top 3 most recent distinct error messages
-  tail -500 "$errlog" 2>/dev/null | grep -E "\[error\]|\[crit\]|\[emerg\]" | \
+  sudo tail -500 "$errlog" 2>/dev/null | grep -E "\[error\]|\[crit\]|\[emerg\]" | \
     sed 's/.*\] //' | sed 's/, client:.*//' | sort | uniq -c | sort -rn | head -3 | \
     sed 's/^/    /'
-done
+done < <(sudo find /home -path "*/logs/nginx/*_error.log" 2>/dev/null | sort)
 [ "$ERRS_FOUND" -eq 0 ] && echo "  No recent errors in nginx-rc logs"
 
 # --- 5xx Responses Per Webapp (last 500 access log lines) ---
 echo ""
 echo "-- 5xx Responses per Webapp --"
 FIVE_FOUND=0
-for acclog in /home/*/logs/nginx/*_access.log; do
+while IFS= read -r acclog; do
   [ -f "$acclog" ] || continue
   app=$(basename "$acclog" | sed 's/_access.log//')
-  fivex=$(tail -500 "$acclog" 2>/dev/null | awk '$9+0>=500 && $9+0<600 {print $9, $7}' | \
+  fivex=$(sudo tail -500 "$acclog" 2>/dev/null | awk '$9+0>=500 && $9+0<600 {print $9, $7}' | \
     sort | uniq -c | sort -rn | head -5)
   [ -z "$fivex" ] && continue
   FIVE_FOUND=1
   echo "  ${app}:"
   echo "$fivex" | sed 's/^/    /'
-done
+done < <(sudo find /home -path "*/logs/nginx/*_access.log" 2>/dev/null | sort)
 [ "$FIVE_FOUND" -eq 0 ] && echo "  No 5xx responses in recent access logs"
 
-# --- Top URL patterns by request count (last 200 per app) ---
+# --- Top URL patterns by request count (last 200 per app, 5xx only) ---
 echo ""
 echo "-- Top Requested URLs (last 200 per app, 5xx-heavy only) --"
-for acclog in /home/*/logs/nginx/*_access.log; do
+URL_FOUND=0
+while IFS= read -r acclog; do
   [ -f "$acclog" ] || continue
   app=$(basename "$acclog" | sed 's/_access.log//')
-  # Only show if has 5xx
-  has_5xx=$(tail -200 "$acclog" 2>/dev/null | awk '$9+0>=500{c++} END{print c+0}')
+  has_5xx=$(sudo tail -200 "$acclog" 2>/dev/null | awk '$9+0>=500{c++} END{print c+0}')
   [ "${has_5xx:-0}" -eq 0 ] && continue
+  URL_FOUND=1
   echo "  ${app} top paths hitting 5xx:"
-  tail -200 "$acclog" 2>/dev/null | awk '$9+0>=500{print $7}' | \
+  sudo tail -200 "$acclog" 2>/dev/null | awk '$9+0>=500{print $7}' | \
     sort | uniq -c | sort -rn | head -5 | sed 's/^/    /'
-done
+done < <(sudo find /home -path "*/logs/nginx/*_access.log" 2>/dev/null | sort)
+[ "$URL_FOUND" -eq 0 ] && echo "  No 5xx URL patterns found"
 
 # --- Service Status ---
 echo ""
