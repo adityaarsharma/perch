@@ -355,7 +355,12 @@ rule_orphans() {
 
 rule_failed_services() {
   local failed
-  failed="$(systemctl --failed --no-legend --plain 2>/dev/null | awk '{print $1}' | head -10)"
+  # Filter user@N.service — systemd user-session managers; SIGKILL'd on every SSH
+  # disconnect on RunCloud/Ubuntu. Not actionable, not a real failure.
+  failed="$(systemctl --failed --no-legend --plain 2>/dev/null \
+            | awk '{print $1}' \
+            | grep -Ev '^user@[0-9]+\.service$' \
+            | head -10)"
   if [ -n "$failed" ]; then
     local list; list="$(printf -- '- %s\n' $failed)"
     send_alert "failed_svc" "warning" "Failed services" \
