@@ -49,7 +49,8 @@ for conf in /etc/php*rc/fpm.d/*.conf; do
   # Recent saturation hits
   for fpmlog in /var/log/php*rc-fpm.log; do
     [ -f "$fpmlog" ] || continue
-    sat=$(sudo tail -200 "$fpmlog" 2>/dev/null | grep -c "pool ${pool}.*max_children\|max_children.*pool ${pool}" 2>/dev/null || echo 0)
+    sat=$(sudo tail -200 "$fpmlog" 2>/dev/null | { grep -c "pool ${pool}.*max_children\|max_children.*pool ${pool}" 2>/dev/null || true; })
+    sat="${sat//[^0-9]/}"
     [ "${sat:-0}" -gt 0 ] && echo "    ⚠ pool ${pool}: max_children hit ${sat}× in recent log"
   done
 done
@@ -107,7 +108,8 @@ while IFS= read -r appdir; do
   # Recent nginx errors for this app
   errlog=$(sudo find /home/"$username"/logs/nginx -name "${appname}_error.log" -type f 2>/dev/null | head -1)
   if [ -n "$errlog" ]; then
-    recent_errs=$(sudo tail -50 "$errlog" 2>/dev/null | grep -cE "PHP Fatal|WordPress database|connect\(\) failed|upstream" 2>/dev/null || echo 0)
+    recent_errs=$(sudo tail -50 "$errlog" 2>/dev/null | { grep -cE "PHP Fatal|WordPress database|connect\(\) failed|upstream" 2>/dev/null || true; })
+    recent_errs="${recent_errs//[^0-9]/}"
     [ "${recent_errs:-0}" -gt 0 ] && echo "    ⚠ nginx error log: ${recent_errs} serious errors in last 50 lines"
     latest=$(sudo tail -3 "$errlog" 2>/dev/null | grep -v "^$" | tail -1 | cut -c1-100)
     [ -n "$latest" ] && echo "    Latest error: $latest"
