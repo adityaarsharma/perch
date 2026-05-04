@@ -212,7 +212,7 @@ rule_php_fpm() {
     local status; status="$(systemctl is-active "$unit" 2>/dev/null)"
     [ "$status" != "active" ] && [ "$status" != "" ] && down_services+=("$unit:$status")
   done < <(systemctl list-units --all --plain --no-legend 2>/dev/null \
-            | awk '/php[0-9]+-fpm(-rc)?\.service/{print $1}')
+            | awk '/php[0-9]+rc-fpm\.service/{print $1}')
 
   if [ ${#down_services[@]} -gt 0 ]; then
     local listing
@@ -318,6 +318,19 @@ rule_cpu_load() {
     send_alert "cpu_warn" "warning" "CPU under load ($pct%)" \
       "Load average $load1 across $cores core(s). Could be a traffic spike or runaway process." \
       "$(BTN_3 cpu_warn)"
+  else
+    # Load is OK but check for a single process spinning (catches early busy-loops
+    # before they drag up the 1-minute average, e.g. one thread at 100% on 2 cores = 50% load)
+    local busy_procs
+    busy_procs="$(ps -eo pid,user,comm,pcpu --sort=-pcpu --no-headers 2>/dev/null | \
+      awk '$4+0 > 85.0 && $3 !~ /^(kworker|migration|rcu_|ksoftirqd|irq|cpuhp|scsi_|mmcqd|jbd2|ext4)/' | head -3)"
+    if [ -n "${busy_procs:-}" ]; then
+      local top_info
+      top_info="$(printf '%s' "$busy_procs" | awk '{printf "  PID %s (%s): %s%%\n",$1,$3,$4}')"
+      send_alert "cpu_busyloop" "warning" "CPU busy-loop detected" \
+        "A process is holding >85% CPU while overall load is still low — caught early:\n\`\`\`\n${top_info}\n\`\`\`\nLikely a stuck request, infinite loop, or runaway script." \
+        "$(BTN_3 cpu_busyloop)"
+    fi
   fi
 }
 
@@ -326,13 +339,7 @@ rule_cpu_load() {
 # ────────────────────────────────────────────────────────────────────────────────
 
 rule_orphans() {
-  # Only count ACTUAL zombies (state=Z) and known stuck-loop signatures
-  # (sudo cat / sendmail -t / postdrop -r leftovers from the perch-api
-  # timeout bug we fixed earlier). The previous version counted any PPID=1
-  # process not in a 4-name whitelist — on a RunCloud box that included
-  # nginx-rc, php{ver}-fpm-rc, mariadb, redis, dockerd, RunCloud agent,
-  # supervisord, fail2ban, etc. all of which are legit. Pure false-positive
-  # spam.
+  # 1. Zombie + stuck mail/sudo loop processes
   local zombies
   zombies="$(ps -eo state --no-headers 2>/dev/null | awk '$1=="Z"' | wc -l | tr -d ' ')"
   zombies="${zombies:-0}"
@@ -344,8 +351,36 @@ rule_orphans() {
   local total=$((zombies + stuck))
   if [ "$total" -gt "$RULE_ORPHAN_WARN" ]; then
     send_alert "orphans" "warning" "Stuck/zombie processes: $total" \
-      "Detected ${zombies} zombie(s) (state=Z) + ${stuck} stuck mail/sudo loop(s). Smart Fix reaps them safely (it does NOT touch nginx-rc, php-fpm, mariadb, redis, dockerd or any legit RunCloud service)." \
+      "Detected ${zombies} zombie(s) (state=Z) + ${stuck} stuck mail/sudo loop(s). Smart Fix reaps them safely (does NOT touch nginx-rc, php-fpm, mariadb, redis, or any legit RunCloud service)." \
       "$(BTN_3 orphans)"
+  fi
+
+  # 2. WP-Cron pile-up (>2 running = stuck loops that didn't exit)
+  local wpcron_n
+  wpcron_n="$(pgrep -c -f 'wp-cron\.php' 2>/dev/null || echo 0)"
+  if [ "${wpcron_n:-0}" -gt 2 ]; then
+    send_alert "wpcron_pileup" "warning" "WP-Cron pile-up: ${wpcron_n} processes" \
+      "${wpcron_n} wp-cron.php processes stuck running (normal is ≤1). WordPress scheduled tasks are looping and not exiting — likely a slow plugin HTTP callback or cron flood.\n\nThis eats PHP workers and causes 503s under load. Smart Fix restarts the PHP-FPM pool to clear them." \
+      "$(BTN_3 webapp_php)"
+  fi
+
+  # 3. PM2 crash-loops across all apps (≥10 restarts)
+  local pm2_loops
+  pm2_loops="$(pm2 list --no-color 2>/dev/null | awk '
+    /^[│|]/ {
+      gsub(/[│|]/, " ")
+      name=""; restarts=0; found_name=0
+      for(i=1;i<=NF;i++) {
+        if(!found_name && $i~/^[a-zA-Z]/ && length($i)>1) { name=$i; found_name=1 }
+        else if($i~/^[0-9]+$/ && $i+0 >= 10 && name!="" && name!="id") restarts=$i+0
+      }
+      if(restarts >= 10) print name " (" restarts " restarts)"
+    }' | head -5)"
+  if [ -n "${pm2_loops:-}" ]; then
+    local list; list="$(printf -- '• %s\n' $pm2_loops)"
+    send_alert "pm2_crashloop" "warning" "PM2 crash-loop detected" \
+      "App(s) restarting repeatedly:\n${list}\n\nLikely cause: OOM kill, missing env var, or unhandled exception. Check PM2 logs for the error message." \
+      "$(BTN_3 webapp_pm2crash)"
   fi
 }
 
@@ -534,6 +569,83 @@ rule_heartbeat() {
     "$BTN_ACK_ONLY"
 }
 
+# ────────────────────────────────────────────────────────────────────────────────
+# RULE 15 — Per-webapp stack health (auto-discovers all RunCloud webapps)
+# ────────────────────────────────────────────────────────────────────────────────
+
+rule_webapp_health() {
+  command -v sudo >/dev/null 2>&1 || return 0
+
+  local php_alerts=() pm2_alerts=()
+
+  while IFS= read -r appdir; do
+    [ -z "$appdir" ] && continue
+    local appname; appname="$(basename "$appdir")"
+    local username; username="$(printf '%s' "$appdir" | awk -F/ '{print $3}')"
+
+    # Single find call to detect stack — checks all sentinel files at once
+    local sentinels
+    sentinels="$(sudo find "$appdir" -maxdepth 2 \
+      \( -name "wp-config.php" -o -name "package.json" -o -name "requirements.txt" -o -name "artisan" \) \
+      -type f 2>/dev/null | head -5)"
+
+    local stack="unknown"
+    printf '%s' "$sentinels" | grep -q "wp-config.php" && stack="wordpress"
+    printf '%s' "$sentinels" | grep -q "artisan"        && stack="laravel"
+    [ "$stack" = "unknown" ] && printf '%s' "$sentinels" | grep -q "package.json"     && stack="nodejs"
+    [ "$stack" = "unknown" ] && printf '%s' "$sentinels" | grep -q "requirements.txt" && stack="python"
+
+    # WordPress / Laravel — check PHP-FPM pool saturation in FPM logs
+    if [ "$stack" = "wordpress" ] || [ "$stack" = "laravel" ]; then
+      for fpmlog in /var/log/php*rc-fpm.log; do
+        [ -f "$fpmlog" ] || continue
+        local sat
+        sat="$(sudo tail -200 "$fpmlog" 2>/dev/null | \
+          grep -c "pool ${appname}.*max_children\|max_children.*pool ${appname}" 2>/dev/null || echo 0)"
+        if [ "${sat:-0}" -gt 0 ]; then
+          php_alerts+=("${appname}:sat:${sat}")
+          break
+        fi
+      done
+    fi
+
+    # Node.js — check PM2 crash-loops for this specific app
+    if [ "$stack" = "nodejs" ]; then
+      local restarts
+      restarts="$(pm2 list --no-color 2>/dev/null | awk -v app="$appname" '
+        $0 ~ app {
+          for(i=1;i<=NF;i++) if($i~/^[0-9]+$/ && $i+0 >= 10) { print $i; exit }
+        }' | head -1)"
+      [ -n "${restarts:-}" ] && pm2_alerts+=("${appname}:${username}:${restarts}")
+    fi
+
+  done < <(sudo find /home -mindepth 3 -maxdepth 3 -type d -path "*/webapps/*" 2>/dev/null | sort)
+
+  # PHP-FPM pool saturation alerts
+  if [ ${#php_alerts[@]} -gt 0 ]; then
+    local body=""
+    for entry in "${php_alerts[@]}"; do
+      local aname atype aval
+      IFS=: read -r aname atype aval <<< "$entry"
+      body="${body}• *${aname}*: PHP-FPM pool hit max_children ${aval}× recently\n"
+    done
+    body="${body}\nAll PHP workers are allocated — new requests are queuing. This causes response delays and eventual 503s.\n\nQuick fix: Smart Fix restarts the pool. Long-term: reduce start_servers or memory_limit in RunCloud → PHP Settings."
+    send_alert "webapp_phpsat" "warning" "PHP-FPM pool saturation" "$body" "$(BTN_3 webapp_php)"
+  fi
+
+  # PM2 app crash-loop alerts (webapp-specific, complements the global PM2 check in rule_orphans)
+  if [ ${#pm2_alerts[@]} -gt 0 ]; then
+    local body=""
+    for entry in "${pm2_alerts[@]}"; do
+      local aname auser aval
+      IFS=: read -r aname auser aval <<< "$entry"
+      body="${body}• *${aname}* (${auser}): ${aval} restarts\n"
+    done
+    body="${body}\nApp is in a crash-loop. Common causes: OOM kill, missing env var, unhandled exception.\n\nCheck PM2 logs: \`pm2 logs ${pm2_alerts[0]%%:*} --lines 30\`"
+    send_alert "webapp_pm2crash" "warning" "Node.js app crash-loop" "$body" "$(BTN_3 webapp_pm2crash)"
+  fi
+}
+
 # ── Run all rules ─────────────────────────────────────────────────────────────
 
 rule_nginx
@@ -543,6 +655,7 @@ rule_disk
 rule_ram
 rule_cpu_load
 rule_orphans
+rule_webapp_health
 rule_failed_services
 rule_ssl_expiry
 rule_http_availability

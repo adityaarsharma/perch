@@ -93,6 +93,8 @@ ROUTES = {
     '/fix-n8n':      'fix-n8n.sh',
     # Deep diagnostics (read-only — no system changes)
     '/analyze':      'analyze-logs.sh',
+    '/detect-loops': 'detect-loops.sh',
+    '/profile':      'profile-server.sh',
     # Status & diagnostics
     '/status':       'check-status.sh',
     '/status-brief': 'status-brief.sh',
@@ -143,8 +145,16 @@ SMART_FIX_REGISTRY = {
     'ssl_expiring':    'renew-ssl.sh',
     'ssl_critical':    'renew-ssl.sh',
 
-    # Process health → safe zombie reaper inside smart-fix.sh
-    'orphans':         'smart-fix.sh',
+    # Process health → loop/orphan detector
+    'orphans':         'detect-loops.sh',
+    'wpcron_pileup':   'fix-php-fpm.sh',
+    'pm2_crashloop':   'detect-loops.sh',
+    'cpu_busyloop':    'smart-fix.sh',
+
+    # Per-webapp health
+    'webapp_php':      'fix-php-fpm.sh',
+    'webapp_phpsat':   'fix-php-fpm.sh',
+    'webapp_pm2crash': 'detect-loops.sh',
 
     # 5xx / generic site degradation
     'site_5xx':        'smart-fix.sh',
