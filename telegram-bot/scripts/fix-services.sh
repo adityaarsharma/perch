@@ -20,11 +20,12 @@ restart_if_active "mariadb"
 restart_if_active "redis"
 restart_if_active "memcached"
 
-# PHP-FPM (all versions)
-for phpfpm in /lib/systemd/system/php*-fpm.service; do
-  svc=$(basename "$phpfpm" .service)
-  restart_if_active "$svc"
-done
+# PHP-FPM (RunCloud: php{ver}rc-fpm.service)
+while IFS= read -r unit; do
+  [ -z "$unit" ] && continue
+  restart_if_active "$unit"
+done < <(systemctl list-units --all --plain --no-legend 2>/dev/null \
+          | awk '/php[0-9]+rc-fpm\.service/{print $1}')
 
 sleep 2
 

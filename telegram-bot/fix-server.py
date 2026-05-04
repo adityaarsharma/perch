@@ -90,7 +90,9 @@ ROUTES = {
     '/fix-php-fpm':  'fix-php-fpm.sh',
     '/fix-mysql':    'fix-mysql.sh',
     '/fix-services': 'fix-services.sh',
-    '/fix-n8n':      'fix-n8n.sh',         # optional — if user runs n8n
+    '/fix-n8n':      'fix-n8n.sh',
+    # Deep diagnostics (read-only — no system changes)
+    '/analyze':      'analyze-logs.sh',
     # Status & diagnostics
     '/status':       'check-status.sh',
     '/status-brief': 'status-brief.sh',

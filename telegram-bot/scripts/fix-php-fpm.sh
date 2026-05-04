@@ -25,7 +25,7 @@ while IFS= read -r unit; do
     fi
   fi
 done < <(systemctl list-units --all --plain --no-legend 2>/dev/null \
-          | awk '/php[0-9]+-fpm(-rc)?\.service/{print $1}')
+          | awk '/php[0-9]+rc-fpm\.service/{print $1}')
 
 if [ ${#ALL[@]} -eq 0 ]; then
   echo "ℹ  No PHP-FPM services found on this system."
@@ -44,13 +44,18 @@ else
   fi
 fi
 
-# Show current PHP error log lines for context
-LOG=""
-for candidate in /var/log/php*-fpm*.log /home/*/logs/php_error*.log; do
-  [ -f "$candidate" ] && LOG="$candidate" && break
+# Show PHP-FPM pool health from RunCloud logs
+echo ""
+echo "--- Pool Health ---"
+for log in /var/log/php*rc-fpm.log; do
+  [ -f "$log" ] || continue
+  ver=$(basename "$log" | grep -oE 'php[0-9]+rc')
+  warns=$(grep -E "WARNING|CRITICAL|max_children|reached pm" "$log" 2>/dev/null | tail -5)
+  if [ -n "$warns" ]; then
+    echo "${ver} warnings:"
+    echo "$warns" | sed 's/^/  /'
+  else
+    status=$(grep "NOTICE: fpm is running\|ready to handle" "$log" 2>/dev/null | tail -1)
+    echo "${ver}: OK (${status:-no status})"
+  fi
 done
-if [ -n "$LOG" ]; then
-  echo ""
-  echo "Recent PHP-FPM errors ($LOG):"
-  tail -8 "$LOG" 2>/dev/null | sed 's/^/  /' || true
-fi
